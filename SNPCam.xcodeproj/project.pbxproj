@@ -1,0 +1,208 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+		CA5000000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SNPCamApp.swift; sourceTree = "<group>"; };
+		CA5000000000000000000002 = {isa = PBXBuildFile; fileRef = CA5000000000000000000001 /* SNPCamApp.swift */; };
+		CA5000000000000000000003 = {isa = PBXGroup; children = (
+			CA5000000000000000000001 /* SNPCamApp.swift */,
+		); path = App; sourceTree = "<group>"; };
+		CA5000000000000000000004 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraManager.swift; sourceTree = "<group>"; };
+		CA5000000000000000000005 = {isa = PBXBuildFile; fileRef = CA5000000000000000000004 /* CameraManager.swift */; };
+		CA5000000000000000000006 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameRatio.swift; sourceTree = "<group>"; };
+		CA5000000000000000000007 = {isa = PBXBuildFile; fileRef = CA5000000000000000000006 /* FrameRatio.swift */; };
+		CA5000000000000000000008 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCaptureDelegate.swift; sourceTree = "<group>"; };
+		CA5000000000000000000009 = {isa = PBXBuildFile; fileRef = CA5000000000000000000008 /* PhotoCaptureDelegate.swift */; };
+		CA500000000000000000000A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoProcessor.swift; sourceTree = "<group>"; };
+		CA500000000000000000000B = {isa = PBXBuildFile; fileRef = CA500000000000000000000A /* PhotoProcessor.swift */; };
+		CA500000000000000000000C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewRenderer.swift; sourceTree = "<group>"; };
+		CA500000000000000000000D = {isa = PBXBuildFile; fileRef = CA500000000000000000000C /* PreviewRenderer.swift */; };
+		CA500000000000000000000E = {isa = PBXGroup; children = (
+			CA5000000000000000000004 /* CameraManager.swift */,
+			CA5000000000000000000006 /* FrameRatio.swift */,
+			CA5000000000000000000008 /* PhotoCaptureDelegate.swift */,
+			CA500000000000000000000A /* PhotoProcessor.swift */,
+			CA500000000000000000000C /* PreviewRenderer.swift */,
+		); path = Camera; sourceTree = "<group>"; };
+		CA500000000000000000000F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LookParameters.swift; sourceTree = "<group>"; };
+		CA5000000000000000000010 = {isa = PBXBuildFile; fileRef = CA500000000000000000000F /* LookParameters.swift */; };
+		CA5000000000000000000011 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetroLook.swift; sourceTree = "<group>"; };
+		CA5000000000000000000012 = {isa = PBXBuildFile; fileRef = CA5000000000000000000011 /* RetroLook.swift */; };
+		CA5000000000000000000013 = {isa = PBXGroup; children = (
+			CA500000000000000000000F /* LookParameters.swift */,
+			CA5000000000000000000011 /* RetroLook.swift */,
+		); path = Look; sourceTree = "<group>"; };
+		CA5000000000000000000014 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraScreen.swift; sourceTree = "<group>"; };
+		CA5000000000000000000015 = {isa = PBXBuildFile; fileRef = CA5000000000000000000014 /* CameraScreen.swift */; };
+		CA5000000000000000000016 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Overlays.swift; sourceTree = "<group>"; };
+		CA5000000000000000000017 = {isa = PBXBuildFile; fileRef = CA5000000000000000000016 /* Overlays.swift */; };
+		CA5000000000000000000018 = {isa = PBXGroup; children = (
+			CA5000000000000000000014 /* CameraScreen.swift */,
+			CA5000000000000000000016 /* Overlays.swift */,
+		); path = UI; sourceTree = "<group>"; };
+		CA5000000000000000000019 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionManager.swift; sourceTree = "<group>"; };
+		CA500000000000000000001A = {isa = PBXBuildFile; fileRef = CA5000000000000000000019 /* MotionManager.swift */; };
+		CA500000000000000000001B = {isa = PBXGroup; children = (
+			CA5000000000000000000019 /* MotionManager.swift */,
+		); path = Support; sourceTree = "<group>"; };
+		CA500000000000000000001C = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		CA500000000000000000001D = {isa = PBXBuildFile; fileRef = CA500000000000000000001C /* Assets.xcassets */; };
+		CA500000000000000000001E = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SNPCam.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CA500000000000000000001F = {isa = PBXGroup; children = (
+			CA500000000000000000001E /* SNPCam.app */,
+		); name = Products; sourceTree = "<group>"; };
+		CA5000000000000000000020 = {isa = PBXGroup; children = (
+			CA5000000000000000000003 /* App */,
+			CA500000000000000000000E /* Camera */,
+			CA5000000000000000000013 /* Look */,
+			CA5000000000000000000018 /* UI */,
+			CA500000000000000000001B /* Support */,
+			CA500000000000000000001C /* Assets.xcassets */,
+		); path = SNPCam; sourceTree = "<group>"; };
+		CA5000000000000000000021 = {isa = PBXGroup; children = (
+			CA5000000000000000000020 /* SNPCam */,
+			CA500000000000000000001F /* Products */,
+		); sourceTree = "<group>"; };
+		CA5000000000000000000022 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
+			CA5000000000000000000002 /* SNPCamApp.swift in Sources */,
+			CA5000000000000000000005 /* CameraManager.swift in Sources */,
+			CA5000000000000000000007 /* FrameRatio.swift in Sources */,
+			CA5000000000000000000009 /* PhotoCaptureDelegate.swift in Sources */,
+			CA500000000000000000000B /* PhotoProcessor.swift in Sources */,
+			CA500000000000000000000D /* PreviewRenderer.swift in Sources */,
+			CA5000000000000000000010 /* LookParameters.swift in Sources */,
+			CA5000000000000000000012 /* RetroLook.swift in Sources */,
+			CA5000000000000000000015 /* CameraScreen.swift in Sources */,
+			CA5000000000000000000017 /* Overlays.swift in Sources */,
+			CA500000000000000000001A /* MotionManager.swift in Sources */,
+		); runOnlyForDeploymentPostprocessing = 0; };
+		CA5000000000000000000023 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (
+		); runOnlyForDeploymentPostprocessing = 0; };
+		CA5000000000000000000024 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (
+			CA500000000000000000001D /* Assets.xcassets in Resources */,
+		); runOnlyForDeploymentPostprocessing = 0; };
+		CA5000000000000000000025 = {isa = XCBuildConfiguration; buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			}; name = Debug; };
+		CA5000000000000000000026 = {isa = XCBuildConfiguration; buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				VALIDATE_PRODUCT = YES;
+			}; name = Release; };
+		CA5000000000000000000027 = {isa = XCBuildConfiguration; buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = SNP;
+				INFOPLIST_KEY_NSCameraUsageDescription = "사진을 촬영하려면 카메라 접근이 필요합니다.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "수평계를 표시하기 위해 기기 움직임을 사용합니다.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "촬영한 사진을 보관함에 저장합니다.";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UIStatusBarHidden = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.snp.snpcam;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			}; name = Debug; };
+		CA5000000000000000000028 = {isa = XCBuildConfiguration; buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = SNP;
+				INFOPLIST_KEY_NSCameraUsageDescription = "사진을 촬영하려면 카메라 접근이 필요합니다.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "수평계를 표시하기 위해 기기 움직임을 사용합니다.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "촬영한 사진을 보관함에 저장합니다.";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UIStatusBarHidden = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.snp.snpcam;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			}; name = Release; };
+		CA5000000000000000000029 = {isa = XCConfigurationList; buildConfigurations = (
+			CA5000000000000000000025 /* Debug */,
+			CA5000000000000000000026 /* Release */,
+		); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		CA500000000000000000002A = {isa = XCConfigurationList; buildConfigurations = (
+			CA5000000000000000000027 /* Debug */,
+			CA5000000000000000000028 /* Release */,
+		); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		CA500000000000000000002B = {isa = PBXNativeTarget; buildConfigurationList = CA500000000000000000002A; buildPhases = (
+			CA5000000000000000000022 /* Sources */,
+			CA5000000000000000000023 /* Frameworks */,
+			CA5000000000000000000024 /* Resources */,
+		); buildRules = (
+		); dependencies = (
+		); name = SNPCam; productName = SNPCam; productReference = CA500000000000000000001E /* SNPCam.app */; productType = "com.apple.product-type.application"; };
+		CA500000000000000000002C = {isa = PBXProject; attributes = { BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 1500; LastUpgradeCheck = 1500; TargetAttributes = { CA500000000000000000002B = { CreatedOnToolsVersion = 15.0; }; }; }; buildConfigurationList = CA5000000000000000000029; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (
+				en,
+				Base,
+			); mainGroup = CA5000000000000000000021; productRefGroup = CA500000000000000000001F /* Products */; projectDirPath = ""; projectRoot = ""; targets = (
+			CA500000000000000000002B /* SNPCam */,
+		); };
+
+	};
+	rootObject = CA500000000000000000002C /* Project object */;
+}
