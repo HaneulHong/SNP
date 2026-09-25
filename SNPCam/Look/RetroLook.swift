@@ -56,6 +56,23 @@ enum RetroLook {
                 .cropped(to: extent)
         }
 
+        // ── 4-1. 뿌연 헤이즈: 흐린 사본 중 밝은 쪽만 남겨 섞는다
+        //         → 피부의 어두운 잡티가 주변 살색에 묻히고, 전체가 살짝 뽀얗게 뜬다
+        if params.hazeAmount > 0 {
+            let blurred = image.clampedToExtent()
+                .applyingFilter("CIGaussianBlur", parameters: [
+                    kCIInputRadiusKey: params.hazeRadius * scale
+                ])
+                .cropped(to: extent)
+            let lightened = blurred.applyingFilter("CILightenBlendMode", parameters: [
+                kCIInputBackgroundImageKey: image
+            ])
+            image = image.applyingFilter("CIDissolveTransition", parameters: [
+                kCIInputTargetImageKey: lightened,
+                kCIInputTimeKey: min(params.hazeAmount, 1)
+            ])
+        }
+
         // ── 5. 소프트 디테일 → ISP 샤프닝 헤일로
         if params.softness > 0 {
             image = image.clampedToExtent()
@@ -97,10 +114,11 @@ enum RetroLook {
         let lo = params.blackLift
         let hi = params.highlightRolloff
         let c  = params.midContrast
+        let g  = params.midGamma
 
         func map(_ x: Double) -> Double {
             let contrasted = min(max(0.5 + (x - 0.5) * c, 0), 1)
-            return lo + (hi - lo) * contrasted
+            return lo + (hi - lo) * pow(contrasted, g)
         }
 
         return image.applyingFilter("CIToneCurve", parameters: [

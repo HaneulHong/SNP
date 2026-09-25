@@ -39,10 +39,13 @@ final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
             return
         }
 
+        // 플래시가 실제로 터졌을 때만 플래시 룩 (자동 모드에서 안 터지면 그대로)
+        let look = photo.resolvedSettings.isFlashEnabled ? params.withFlash() : params
+
         workQueue.async { [self] in
             guard let result = PhotoProcessor.process(photoData: data,
                                                       ratio: ratio,
-                                                      params: params,
+                                                      params: look,
                                                       mirrored: mirrored,
                                                       context: context) else {
                 completion(nil)

@@ -31,7 +31,9 @@ enum PhotoProcessor {
         image = centerCrop(image, aspect: ratio.aspect)
 
         // 2. 흉내내는 기종의 센서 해상도로 다운스케일 (5s = 8MP, 6s = 12MP)
-        image = resize(image, to: ratio.outputSize(sensorLongSide: CGFloat(params.sensorLongSide)))
+        //    셀카(mirrored = 전면 카메라)는 그 시절 전면 카메라 해상도로 (5s = 1.2MP, 6s = 5MP)
+        let longSide = mirrored ? params.frontSensorLongSide : params.sensorLongSide
+        image = resize(image, to: ratio.outputSize(sensorLongSide: CGFloat(longSide)))
 
         // 3. 룩 적용
         let looked = RetroLook.apply(to: image,
