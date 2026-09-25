@@ -42,7 +42,7 @@ struct LookParameters: Equatable {
     var glareRadius: Double = 10
 
     // MARK: 6. 센서
-    /// 저장 해상도의 긴 변 — 3264 = 8MP (5s·6), 4032 = 12MP (6s)
+    /// 저장 해상도의 긴 변 — 3264 = 8MP (5s), 4032 = 12MP (6s)
     var sensorLongSide: Double = 3264
 
     // MARK: 프리셋
@@ -61,25 +61,6 @@ struct LookParameters: Equatable {
         p.softness = 1.4
         p.vignetteIntensity = 0.75
         p.glareAmount = 0.45
-        return p
-    }
-
-    /// iPhone 6 (2014) — 같은 8MP 지만 A8 ISP 로 색이 중립에 가까워지고
-    /// 하이라이트가 덜 날아간다. 노이즈 리덕션이 세져서 결은 줄고 뭉개짐이 는다.
-    static var iPhone6: LookParameters {
-        var p = LookParameters()
-        p.blackLift = 0.045
-        p.highlightRolloff = 0.95
-        p.midContrast = 1.04
-        p.targetTemperature = 6150
-        p.targetTint = 3
-        p.saturation = 0.92
-        p.softness = 1.1
-        p.sharpenIntensity = 0.45
-        p.grainAmount = 0.40
-        p.grainSize = 2.4
-        p.vignetteIntensity = 0.50
-        p.glareAmount = 0.28
         return p
     }
 
@@ -105,6 +86,23 @@ struct LookParameters: Equatable {
         return p
     }
 
+    /// 6s 를 더 강하게 — 실내 저조도 6s 느낌 (실제 기종 6s Plus 가 아님)
+    /// 노이즈 리덕션이 못 따라가 결이 거칠어지고, 조명 탓에 더 따뜻해진다.
+    static var iPhone6sStrong: LookParameters {
+        var p = LookParameters.iPhone6s
+        p.blackLift = 0.06
+        p.highlightRolloff = 0.925
+        p.targetTemperature = 6600
+        p.targetTint = 4
+        p.saturation = 0.90
+        p.softness = 1.0
+        p.grainAmount = 0.75
+        p.grainSize = 2.0
+        p.vignetteIntensity = 0.65
+        p.glareAmount = 0.40
+        return p
+    }
+
     /// 룩 비활성 (원본 그대로)
     static var off: LookParameters {
         var p = LookParameters()
@@ -126,8 +124,8 @@ struct LookParameters: Equatable {
 enum LookPreset: String, CaseIterable, Identifiable {
     case standard = "5s"
     case strong   = "5s+"
-    case iPhone6  = "6"
     case iPhone6s = "6s"
+    case iPhone6sStrong = "6s+"
     case off      = "OFF"
 
     var id: String { rawValue }
@@ -136,8 +134,8 @@ enum LookPreset: String, CaseIterable, Identifiable {
         switch self {
         case .standard: return .standard
         case .strong:   return .strong
-        case .iPhone6:  return .iPhone6
         case .iPhone6s: return .iPhone6s
+        case .iPhone6sStrong: return .iPhone6sStrong
         case .off:      return .off
         }
     }

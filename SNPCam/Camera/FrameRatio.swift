@@ -26,7 +26,7 @@ enum FrameRatio: String, CaseIterable, Identifiable {
     }
 
     /// 저장 해상도 — 긴 변을 흉내내는 기종의 4:3 센서에 맞춘 크기
-    /// (5s·6 = 8MP 3264×2448, 6s = 12MP 4032×3024)
+    /// (5s = 8MP 3264×2448, 6s = 12MP 4032×3024)
     func outputSize(sensorLongSide: CGFloat) -> CGSize {
         let short = (sensorLongSide * 3 / 4).rounded()
         switch self {

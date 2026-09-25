@@ -30,7 +30,7 @@ enum PhotoProcessor {
         // 1. 목표 비율로 센터 크롭
         image = centerCrop(image, aspect: ratio.aspect)
 
-        // 2. 흉내내는 기종의 센서 해상도로 다운스케일 (5s·6 = 8MP, 6s = 12MP)
+        // 2. 흉내내는 기종의 센서 해상도로 다운스케일 (5s = 8MP, 6s = 12MP)
         image = resize(image, to: ratio.outputSize(sensorLongSide: CGFloat(params.sensorLongSide)))
 
         // 3. 룩 적용
