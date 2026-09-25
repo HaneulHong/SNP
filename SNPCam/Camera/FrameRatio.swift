@@ -25,11 +25,21 @@ enum FrameRatio: String, CaseIterable, Identifiable {
         }
     }
 
-    /// 저장 해상도 — iPhone 5s/6s 의 8MP(3264×2448) 센서에 맞춘 크기
-    var outputSize: CGSize {
+    /// 저장 해상도 — 긴 변을 흉내내는 기종의 4:3 센서에 맞춘 크기
+    /// (5s = 8MP 3264×2448, 6s = 12MP 4032×3024)
+    func outputSize(sensorLongSide: CGFloat) -> CGSize {
+        let short = (sensorLongSide * 3 / 4).rounded()
         switch self {
-        case .square:    return CGSize(width: 2448, height: 2448)
-        case .fourThree: return CGSize(width: 2448, height: 3264)
+        case .square:    return CGSize(width: short, height: short)
+        case .fourThree: return CGSize(width: short, height: sensorLongSide)
+        }
+    }
+
+    /// 비디오 해상도 — 5s 의 1080p 급. 가로 1080 에 비율만 바꾼다.
+    var videoSize: CGSize {
+        switch self {
+        case .square:    return CGSize(width: 1080, height: 1080)
+        case .fourThree: return CGSize(width: 1080, height: 1440)
         }
     }
 

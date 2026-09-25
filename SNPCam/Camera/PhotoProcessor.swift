@@ -1,7 +1,7 @@
 import CoreImage
 import UIKit
 
-/// 촬영된 원본 → 크롭 → 8MP 다운스케일 → 룩 적용 → JPEG.
+/// 촬영된 원본 → 크롭 → 기종 해상도(8/12MP)로 다운스케일 → 룩 적용 → JPEG.
 enum PhotoProcessor {
 
     struct Output {
@@ -30,8 +30,10 @@ enum PhotoProcessor {
         // 1. 목표 비율로 센터 크롭
         image = centerCrop(image, aspect: ratio.aspect)
 
-        // 2. 8MP 급으로 다운스케일 — 룩 파라미터가 이 해상도 기준으로 튜닝돼 있다
-        image = resize(image, to: ratio.outputSize)
+        // 2. 흉내내는 기종의 센서 해상도로 다운스케일 (5s = 8MP, 6s = 12MP)
+        //    셀카(mirrored = 전면 카메라)는 그 시절 전면 카메라 해상도로 (5s = 1.2MP, 6s = 5MP)
+        let longSide = mirrored ? params.frontSensorLongSide : params.sensorLongSide
+        image = resize(image, to: ratio.outputSize(sensorLongSide: CGFloat(longSide)))
 
         // 3. 룩 적용
         let looked = RetroLook.apply(to: image,

@@ -21,12 +21,15 @@
 		CA500000000000000000000B = {isa = PBXBuildFile; fileRef = CA500000000000000000000A /* PhotoProcessor.swift */; };
 		CA500000000000000000000C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewRenderer.swift; sourceTree = "<group>"; };
 		CA500000000000000000000D = {isa = PBXBuildFile; fileRef = CA500000000000000000000C /* PreviewRenderer.swift */; };
+		CA500000000000000000002D = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoRecorder.swift; sourceTree = "<group>"; };
+		CA500000000000000000002E = {isa = PBXBuildFile; fileRef = CA500000000000000000002D /* VideoRecorder.swift */; };
 		CA500000000000000000000E = {isa = PBXGroup; children = (
 			CA5000000000000000000004 /* CameraManager.swift */,
 			CA5000000000000000000006 /* FrameRatio.swift */,
 			CA5000000000000000000008 /* PhotoCaptureDelegate.swift */,
 			CA500000000000000000000A /* PhotoProcessor.swift */,
 			CA500000000000000000000C /* PreviewRenderer.swift */,
+			CA500000000000000000002D /* VideoRecorder.swift */,
 		); path = Camera; sourceTree = "<group>"; };
 		CA500000000000000000000F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LookParameters.swift; sourceTree = "<group>"; };
 		CA5000000000000000000010 = {isa = PBXBuildFile; fileRef = CA500000000000000000000F /* LookParameters.swift */; };
@@ -74,6 +77,7 @@
 			CA5000000000000000000009 /* PhotoCaptureDelegate.swift in Sources */,
 			CA500000000000000000000B /* PhotoProcessor.swift in Sources */,
 			CA500000000000000000000D /* PreviewRenderer.swift in Sources */,
+			CA500000000000000000002E /* VideoRecorder.swift in Sources */,
 			CA5000000000000000000010 /* LookParameters.swift in Sources */,
 			CA5000000000000000000012 /* RetroLook.swift in Sources */,
 			CA5000000000000000000015 /* CameraScreen.swift in Sources */,
@@ -137,6 +141,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = SNP;
 				INFOPLIST_KEY_NSCameraUsageDescription = "사진을 촬영하려면 카메라 접근이 필요합니다.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "동영상에 소리를 함께 녹음합니다.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "수평계를 표시하기 위해 기기 움직임을 사용합니다.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "촬영한 사진을 보관함에 저장합니다.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -163,6 +168,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = SNP;
 				INFOPLIST_KEY_NSCameraUsageDescription = "사진을 촬영하려면 카메라 접근이 필요합니다.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "동영상에 소리를 함께 녹음합니다.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "수평계를 표시하기 위해 기기 움직임을 사용합니다.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "촬영한 사진을 보관함에 저장합니다.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

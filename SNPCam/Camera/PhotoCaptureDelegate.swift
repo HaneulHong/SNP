@@ -39,10 +39,13 @@ final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
             return
         }
 
+        // 플래시가 실제로 터졌을 때만 플래시 룩 (자동 모드에서 안 터지면 그대로)
+        let look = photo.resolvedSettings.isFlashEnabled ? params.withFlash() : params
+
         workQueue.async { [self] in
             guard let result = PhotoProcessor.process(photoData: data,
                                                       ratio: ratio,
-                                                      params: params,
+                                                      params: look,
                                                       mirrored: mirrored,
                                                       context: context) else {
                 completion(nil)
@@ -56,21 +59,39 @@ final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
 
 enum PhotoSaver {
     static func save(jpeg: Data) {
-        let write = {
+        whenAuthorized {
             PHPhotoLibrary.shared().performChanges {
                 let request = PHAssetCreationRequest.forAsset()
                 let options = PHAssetResourceCreationOptions()
                 options.uniformTypeIdentifier = UTType.jpeg.identifier
                 request.addResource(with: .photo, data: jpeg, options: options)
             } completionHandler: { _, _ in }
-        }
+        } denied: {}
+    }
 
+    /// 임시 동영상 파일을 보관함으로 옮긴다. 성공·실패와 상관없이 임시 파일은 남지 않는다.
+    static func saveVideo(at url: URL) {
+        let cleanUp: () -> Void = { try? FileManager.default.removeItem(at: url) }
+        whenAuthorized {
+            PHPhotoLibrary.shared().performChanges {
+                let request = PHAssetCreationRequest.forAsset()
+                let options = PHAssetResourceCreationOptions()
+                options.shouldMoveFile = true
+                request.addResource(with: .video, fileURL: url, options: options)
+            } completionHandler: { _, _ in cleanUp() }
+        } denied: {
+            cleanUp()
+        }
+    }
+
+    private static func whenAuthorized(_ write: @escaping () -> Void,
+                                       denied: @escaping () -> Void) {
         let status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
         if status == .authorized || status == .limited {
             write()
         } else {
             PHPhotoLibrary.requestAuthorization(for: .addOnly) { newStatus in
-                if newStatus == .authorized || newStatus == .limited { write() }
+                if newStatus == .authorized || newStatus == .limited { write() } else { denied() }
             }
         }
     }
