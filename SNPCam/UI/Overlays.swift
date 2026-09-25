@@ -96,6 +96,65 @@ struct ShutterButton: View {
     }
 }
 
+/// 기본 카메라와 같은 녹화 버튼 — 대기 중엔 빨간 원, 녹화 중엔 빨간 사각형
+struct RecordButton: View {
+    let isRecording: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .stroke(Color.white, lineWidth: 3)
+                    .frame(width: 72, height: 72)
+                RoundedRectangle(cornerRadius: isRecording ? 6 : 30, style: .continuous)
+                    .fill(Color.red)
+                    .frame(width: isRecording ? 28 : 60, height: isRecording ? 28 : 60)
+            }
+            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isRecording)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// 셔터 위 모드 글자 — 선택된 쪽이 노란색
+struct ModePicker: View {
+    let selection: CaptureMode
+    let onSelect: (CaptureMode) -> Void
+
+    var body: some View {
+        HStack(spacing: 22) {
+            ForEach(CaptureMode.allCases) { mode in
+                Button {
+                    onSelect(mode)
+                } label: {
+                    Text(mode.label)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(mode == selection ? Color.yellow : Color.white)
+                        .padding(.vertical, 4)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+/// 상단 녹화 시간 — 00:00:12
+struct RecordingTime: View {
+    let duration: TimeInterval
+
+    var body: some View {
+        let total = Int(duration)
+        Text(String(format: "%02d:%02d:%02d", total / 3600, (total / 60) % 60, total % 60))
+            .font(.system(size: 15, weight: .medium, design: .monospaced))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Color.red, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+    }
+}
+
 /// 상단 아이콘 토글
 struct TopToggle: View {
     let systemName: String

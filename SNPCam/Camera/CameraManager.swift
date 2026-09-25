@@ -1,4 +1,5 @@
 import AVFoundation
+import AudioToolbox
 import CoreImage
 import Photos
 import SwiftUI
@@ -10,12 +11,20 @@ final class CameraManager: NSObject, ObservableObject {
     @Published private(set) var setupFailed = false
     @Published private(set) var cameraDenied = false
 
+    @Published private(set) var mode: CaptureMode = .photo
+
     @Published var ratio: FrameRatio = .square
     @Published var lookPreset: LookPreset = .standard
     @Published var flashMode: AVCaptureDevice.FlashMode = .off
     @Published var timerSeconds: Int = 0
     @Published var showsGrid = false
     @Published var showsLevel = false
+
+    @Published private(set) var camcorderPreset: CamcorderPreset = .dv
+    @Published private(set) var showsDateStamp = true
+    @Published private(set) var torchOn = false
+    @Published private(set) var isRecording = false
+    @Published private(set) var recordingDuration: TimeInterval = 0
 
     @Published private(set) var position: AVCaptureDevice.Position = .back
     @Published private(set) var isCapturing = false
@@ -36,30 +45,57 @@ final class CameraManager: NSObject, ObservableObject {
         let id: UUID
     }
 
+    /// 프리뷰 프레임의 세로 기준 가로/세로 비
+    var previewAspect: CGFloat {
+        mode == .video ? CamcorderLook.aspect : ratio.aspect
+    }
+
     // MARK: - AVFoundation
     let renderer = PreviewRenderer()
 
     private let session = AVCaptureSession()
     private let sessionQueue = DispatchQueue(label: "snpcam.session")
+    /// 영상·소리 버퍼와 녹화기는 모두 이 직렬 큐에서만 다룬다
     private let videoQueue = DispatchQueue(label: "snpcam.video", qos: .userInitiated)
 
     private var videoInput: AVCaptureDeviceInput?
+    private var audioInput: AVCaptureDeviceInput?
     private let videoOutput = AVCaptureVideoDataOutput()
+    private let audioOutput = AVCaptureAudioDataOutput()
     private let photoOutput = AVCapturePhotoOutput()
 
     private var captureDelegates: [Int64: PhotoCaptureDelegate] = [:]
     private var countdownTimer: Timer?
+    private var recordingTimer: Timer?
     private var frameSeed: Double = 0
 
     /// 현재 룩 파라미터 (백그라운드 큐에서도 읽으므로 별도 저장)
     private var currentParams = LookParameters.standard
     private var currentRatio: FrameRatio = .square
+    private var currentMode: CaptureMode = .photo
+    private var currentCamcorder = CamcorderParameters.dv
+    private var currentShowsDate = true
+    private var liveOrientation: CaptureOrientation = .portrait
     private var isFrontCamera = false
+
+    /// 비디오 큐 전용
+    private var recorder: VideoRecorder?
+    private let dateStamp = DateStamp()
 
     override init() {
         super.init()
         currentParams = lookPreset.parameters
         currentRatio = ratio
+
+        // 앱이 내려가거나 전화가 오면 녹화를 끊어서 파일이 깨지지 않게 한다
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(stopRecordingIfNeeded),
+                                               name: UIApplication.didEnterBackgroundNotification,
+                                               object: nil)
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(stopRecordingIfNeeded),
+                                               name: AVCaptureSession.wasInterruptedNotification,
+                                               object: session)
     }
 
     // MARK: - 라이프사이클
@@ -80,6 +116,7 @@ final class CameraManager: NSObject, ObservableObject {
     }
 
     func onDisappear() {
+        stopRecordingIfNeeded()
         sessionQueue.async { [weak self] in
             guard let self, self.session.isRunning else { return }
             self.session.stopRunning()
@@ -91,10 +128,12 @@ final class CameraManager: NSObject, ObservableObject {
 
     private func configureSessionIfNeeded() {
         guard !isConfigured else { return }
+        LegacyLens.disableAutoFraming()
+
         session.beginConfiguration()
         session.sessionPreset = .photo
 
-        guard let device = Self.device(for: .back),
+        guard let device = LegacyLens.device(for: .back),
               let input = try? AVCaptureDeviceInput(device: device),
               session.canAddInput(input) else {
             session.commitConfiguration()
@@ -111,27 +150,27 @@ final class CameraManager: NSObject, ObservableObject {
         videoOutput.setSampleBufferDelegate(self, queue: videoQueue)
         if session.canAddOutput(videoOutput) { session.addOutput(videoOutput) }
 
+        // 오디오 출력은 비디오 모드에서만 세션에 붙인다
+        audioOutput.setSampleBufferDelegate(self, queue: videoQueue)
+
         photoOutput.maxPhotoQualityPrioritization = .quality
         if session.canAddOutput(photoOutput) { session.addOutput(photoOutput) }
 
         session.commitConfiguration()
+        isConfigured = true
 
         configureConnections(front: false)
+        configureLens(device)
         updateExposureRange(for: device)
-        isConfigured = true
+
+        // 권한 대기 중에 비디오로 넘어갔을 수도 있다
+        if currentMode == .video { applyModeConfiguration() }
     }
 
     private func startSession() {
         guard !session.isRunning else { return }
         session.startRunning()
         DispatchQueue.main.async { self.isSessionRunning = true }
-    }
-
-    private static func device(for position: AVCaptureDevice.Position) -> AVCaptureDevice? {
-        let types: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera]
-        return AVCaptureDevice.DiscoverySession(deviceTypes: types,
-                                                mediaType: .video,
-                                                position: position).devices.first
     }
 
     /// 세로 고정 + 전면 미러링
@@ -154,6 +193,84 @@ final class CameraManager: NSObject, ObservableObject {
         }
     }
 
+    /// 렌즈 하나 고정 + 5s~6s 화각. 포맷이 바뀌면 줌이 풀리므로 세션을 건드릴 때마다 다시 건다.
+    private func configureLens(_ device: AVCaptureDevice) {
+        do {
+            try device.lockForConfiguration()
+            LegacyLens.applyFieldOfView(to: device)
+            LegacyLens.disableVideoHDR(on: device)
+            device.unlockForConfiguration()
+        } catch { }
+    }
+
+    // MARK: - 모드 (사진 / 비디오)
+
+    func setMode(_ newMode: CaptureMode) {
+        guard newMode != mode, !isRecording else { return }
+        cancelTimer()
+        if torchOn { setTorch(false) }
+        mode = newMode
+        currentMode = newMode
+        exposureBias = 0
+
+        let apply = { [weak self] in
+            guard let self else { return }
+            self.sessionQueue.async { self.applyModeConfiguration() }
+        }
+        if newMode == .video, AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
+            AVCaptureDevice.requestAccess(for: .audio) { _ in apply() }
+        } else {
+            apply()
+        }
+    }
+
+    /// 사진: 고해상도 `.photo` 프리셋. 비디오: SD(640×480) 프리셋 + 마이크.
+    /// 실행 시점의 `currentMode` 를 따르므로 여러 번 불려도 안전하다.
+    private func applyModeConfiguration() {
+        guard isConfigured else { return }
+        let video = currentMode == .video
+
+        session.beginConfiguration()
+        if video {
+            addAudioIfAuthorized()
+            if session.canSetSessionPreset(.vga640x480) {
+                session.sessionPreset = .vga640x480
+            } else if session.canSetSessionPreset(.high) {
+                session.sessionPreset = .high
+            }
+        } else {
+            removeAudio()
+            session.sessionPreset = .photo
+        }
+        session.commitConfiguration()
+
+        configureConnections(front: isFrontCamera)
+        if let device = videoInput?.device {
+            configureLens(device)
+            updateExposureRange(for: device)
+        }
+    }
+
+    private func addAudioIfAuthorized() {
+        guard audioInput == nil,
+              AVCaptureDevice.authorizationStatus(for: .audio) == .authorized,
+              let mic = AVCaptureDevice.default(for: .audio),
+              let input = try? AVCaptureDeviceInput(device: mic),
+              session.canAddInput(input) else { return }
+        session.addInput(input)
+        audioInput = input
+        if session.canAddOutput(audioOutput) { session.addOutput(audioOutput) }
+    }
+
+    /// 사진 모드에선 마이크를 놓아서 상단 주황 점이 뜨지 않게 한다
+    private func removeAudio() {
+        if let audioInput {
+            session.removeInput(audioInput)
+            self.audioInput = nil
+        }
+        if session.outputs.contains(audioOutput) { session.removeOutput(audioOutput) }
+    }
+
     // MARK: - 설정 변경
 
     func syncLook() {
@@ -174,6 +291,23 @@ final class CameraManager: NSObject, ObservableObject {
         currentParams = lookPreset.parameters
     }
 
+    func cycleCamcorder() {
+        let all = CamcorderPreset.allCases
+        if let i = all.firstIndex(of: camcorderPreset) {
+            camcorderPreset = all[(i + 1) % all.count]
+        }
+        currentCamcorder = camcorderPreset.parameters
+    }
+
+    func toggleDateStamp() {
+        showsDateStamp.toggle()
+        currentShowsDate = showsDateStamp
+    }
+
+    func updateOrientation(_ orientation: CaptureOrientation) {
+        liveOrientation = orientation
+    }
+
     func cycleFlash() {
         switch flashMode {
         case .off:  flashMode = .auto
@@ -190,11 +324,32 @@ final class CameraManager: NSObject, ObservableObject {
         }
     }
 
+    func toggleTorch() {
+        guard mode == .video, position == .back else { return }
+        setTorch(!torchOn)
+    }
+
+    private func setTorch(_ on: Bool) {
+        torchOn = on
+        sessionQueue.async { [weak self] in
+            guard let device = self?.videoInput?.device, device.hasTorch else { return }
+            let torchMode: AVCaptureDevice.TorchMode = on ? .on : .off
+            guard device.isTorchModeSupported(torchMode) else { return }
+            do {
+                try device.lockForConfiguration()
+                device.torchMode = torchMode
+                device.unlockForConfiguration()
+            } catch { }
+        }
+    }
+
     func switchCamera() {
+        guard !isRecording else { return }
+        if torchOn { setTorch(false) }
         let target: AVCaptureDevice.Position = (position == .back) ? .front : .back
         sessionQueue.async { [weak self] in
             guard let self,
-                  let newDevice = Self.device(for: target),
+                  let newDevice = LegacyLens.device(for: target),
                   let newInput = try? AVCaptureDeviceInput(device: newDevice) else { return }
 
             self.session.beginConfiguration()
@@ -210,6 +365,7 @@ final class CameraManager: NSObject, ObservableObject {
             let isFront = (target == .front)
             self.configureConnections(front: isFront)
             self.isFrontCamera = isFront
+            self.configureLens(newDevice)
             self.updateExposureRange(for: newDevice)
 
             DispatchQueue.main.async {
@@ -248,8 +404,9 @@ final class CameraManager: NSObject, ObservableObject {
             self.focusIndicator = FocusIndicator(point: viewPoint, id: UUID())
         }
 
-        // 뷰 → 세로 프레임 전체 → 센서 좌표
-        let cropFraction = currentRatio == .square ? (3.0 / 4.0) : 1.0
+        // 뷰 → 세로 프레임 전체 → 센서 좌표 (세로 버퍼는 3:4, 더 넓은 비율이면 위아래를 잘라 쓴다)
+        let aspect = currentMode == .video ? CamcorderLook.aspect : currentRatio.aspect
+        let cropFraction = min(1, (3.0 / 4.0) / aspect)
         let topInset = (1 - cropFraction) / 2
         let pu = normalized.x
         let pv = topInset + normalized.y * cropFraction
@@ -305,7 +462,7 @@ final class CameraManager: NSObject, ObservableObject {
     // MARK: - 촬영
 
     func shutterTapped() {
-        guard !isCapturing, countdown == 0 else { return }
+        guard mode == .photo, !isCapturing, countdown == 0 else { return }
         guard timerSeconds > 0 else {
             capture()
             return
@@ -374,26 +531,136 @@ final class CameraManager: NSObject, ObservableObject {
             self.photoOutput.capturePhoto(with: settings, delegate: delegate)
         }
     }
+
+    // MARK: - 녹화
+
+    func recordTapped() {
+        isRecording ? stopRecording() : startRecording()
+    }
+
+    private func startRecording() {
+        guard mode == .video, !isRecording else { return }
+        isRecording = true
+        recordingDuration = 0
+        let startedAt = Date()
+        recordingTimer?.invalidate()
+        recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+            self?.recordingDuration = Date().timeIntervalSince(startedAt)
+        }
+        AudioServicesPlaySystemSound(1117)
+
+        // 녹화 중에는 방향을 고정한다 — 도중에 돌려도 파일은 처음 방향 그대로
+        let orientation = liveOrientation
+        let size = orientation.isLandscape
+            ? CGSize(width: CamcorderLook.portraitSize.height, height: CamcorderLook.portraitSize.width)
+            : CamcorderLook.portraitSize
+
+        // 시작·정지 모두 세션 큐 → 비디오 큐 순서로 보내서, 빨리 눌러도 순서가 뒤집히지 않게 한다
+        sessionQueue.async { [weak self] in
+            guard let self else { return }
+            let audioSettings = self.audioInput == nil ? nil : self.makeAudioSettings()
+            self.videoQueue.async {
+                self.recorder = VideoRecorder(size: size,
+                                              orientation: orientation,
+                                              audioSettings: audioSettings,
+                                              context: self.renderer.ciContext)
+                if self.recorder == nil {
+                    DispatchQueue.main.async { self.endRecordingUI() }
+                }
+            }
+        }
+    }
+
+    private func stopRecording() {
+        guard isRecording else { return }
+        endRecordingUI()
+
+        sessionQueue.async { [weak self] in
+            self?.videoQueue.async {
+                guard let self, let recorder = self.recorder else { return }
+                self.recorder = nil
+                recorder.finish { url, thumbnail in
+                    if let url { PhotoSaver.save(videoAt: url) }
+                    DispatchQueue.main.async {
+                        AudioServicesPlaySystemSound(1118)
+                        if let thumbnail { self.lastThumbnail = thumbnail }
+                    }
+                }
+            }
+        }
+    }
+
+    @objc private func stopRecordingIfNeeded() {
+        DispatchQueue.main.async {
+            if self.isRecording { self.stopRecording() }
+        }
+    }
+
+    private func endRecordingUI() {
+        recordingTimer?.invalidate()
+        recordingTimer = nil
+        isRecording = false
+        recordingDuration = 0
+    }
+
+    /// 입력 포맷에 맞춘 AAC. 세션 큐에서 호출한다.
+    private func makeAudioSettings() -> [String: Any] {
+        if let recommended = audioOutput.recommendedAudioSettingsForAssetWriter(writingTo: .mov) {
+            return recommended
+        }
+        return [
+            AVFormatIDKey: kAudioFormatMPEG4AAC,
+            AVNumberOfChannelsKey: 1,
+            AVSampleRateKey: 44_100,
+            AVEncoderBitRateKey: 96_000
+        ]
+    }
 }
 
-// MARK: - 실시간 프리뷰
+// MARK: - 실시간 프리뷰 / 녹화 프레임
 
-extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
+extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate,
+                         AVCaptureAudioDataOutputSampleBufferDelegate {
 
     func captureOutput(_ output: AVCaptureOutput,
                        didOutput sampleBuffer: CMSampleBuffer,
                        from connection: AVCaptureConnection) {
 
+        if output === audioOutput {
+            recorder?.appendAudio(sampleBuffer)
+            return
+        }
+
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-
-        var image = CIImage(cvPixelBuffer: pixelBuffer)
-        image = PhotoProcessor.centerCrop(image, aspect: currentRatio.aspect)
-
+        let image = CIImage(cvPixelBuffer: pixelBuffer)
         frameSeed += 1
-        let looked = RetroLook.apply(to: image,
+
+        if currentMode == .video {
+            renderCamcorderFrame(image, at: CMSampleBufferGetPresentationTimeStamp(sampleBuffer))
+            return
+        }
+
+        let cropped = PhotoProcessor.centerCrop(image, aspect: currentRatio.aspect)
+        let looked = RetroLook.apply(to: cropped,
                                      params: currentParams,
                                      quality: .preview,
                                      seed: frameSeed)
         renderer.enqueue(looked)
+    }
+
+    /// 룩을 입힌 한 장을 파일과 프리뷰에 똑같이 쓴다 (보이는 그대로 기록)
+    private func renderCamcorderFrame(_ image: CIImage, at time: CMTime) {
+        let orientation = recorder?.orientation ?? liveOrientation
+
+        var frame = PhotoProcessor.centerCrop(image, aspect: CamcorderLook.aspect)
+        frame = PhotoProcessor.resize(frame, to: CamcorderLook.portraitSize)
+        // 가로로 들었으면 세상 기준으로 세워서 룩·스탬프를 입힌다
+        frame = orientation.upright(frame)
+
+        let stamp = currentShowsDate ? dateStamp.image(for: Date(), in: frame.extent) : nil
+        let looked = CamcorderLook.apply(to: frame, params: currentCamcorder, stamp: stamp)
+
+        recorder?.appendVideo(looked, at: time)
+        renderer.enqueue(orientation.backToPortrait(looked))
     }
 }

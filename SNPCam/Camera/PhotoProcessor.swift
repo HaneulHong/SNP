@@ -85,7 +85,8 @@ enum PhotoProcessor {
         let scale = size.width / e.width
         guard abs(scale - 1) > 0.001 else { return image }
 
-        let resized = image.applyingFilter("CILanczosScaleTransform", parameters: [
+        // 가장자리를 늘여 둬야 바깥의 투명 픽셀이 섞여 테두리가 어두워지고 알파가 1 에서 벗어나지 않는다
+        let resized = image.clampedToExtent().applyingFilter("CILanczosScaleTransform", parameters: [
             kCIInputScaleKey: scale,
             kCIInputAspectRatioKey: 1.0
         ])

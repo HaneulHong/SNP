@@ -56,7 +56,7 @@ final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
 
 enum PhotoSaver {
     static func save(jpeg: Data) {
-        let write = {
+        withAddAccess {
             PHPhotoLibrary.shared().performChanges {
                 let request = PHAssetCreationRequest.forAsset()
                 let options = PHAssetResourceCreationOptions()
@@ -64,13 +64,31 @@ enum PhotoSaver {
                 request.addResource(with: .photo, data: jpeg, options: options)
             } completionHandler: { _, _ in }
         }
+    }
 
+    /// 임시 파일을 보관함으로 옮긴다. 실패하거나 권한이 없으면 임시 파일을 지운다.
+    static func save(videoAt url: URL) {
+        let cleanUp: () -> Void = { try? FileManager.default.removeItem(at: url) }
+        withAddAccess(denied: cleanUp) {
+            PHPhotoLibrary.shared().performChanges {
+                let request = PHAssetCreationRequest.forAsset()
+                let options = PHAssetResourceCreationOptions()
+                options.shouldMoveFile = true
+                request.addResource(with: .video, fileURL: url, options: options)
+            } completionHandler: { success, _ in
+                if !success { cleanUp() }
+            }
+        }
+    }
+
+    private static func withAddAccess(denied: @escaping () -> Void = {},
+                                      _ write: @escaping () -> Void) {
         let status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
         if status == .authorized || status == .limited {
             write()
         } else {
             PHPhotoLibrary.requestAuthorization(for: .addOnly) { newStatus in
-                if newStatus == .authorized || newStatus == .limited { write() }
+                if newStatus == .authorized || newStatus == .limited { write() } else { denied() }
             }
         }
     }

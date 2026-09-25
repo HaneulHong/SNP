@@ -37,19 +37,29 @@ struct CameraScreen: View {
         }
         .onChange(of: camera.ratio) { _, _ in camera.syncLook() }
         .onChange(of: camera.lookPreset) { _, _ in camera.syncLook() }
+        .onChange(of: motion.captureOrientation, initial: true) { _, orientation in
+            camera.updateOrientation(orientation)
+        }
     }
 
     // MARK: - 상단
 
     private var topBar: some View {
         HStack(spacing: 4) {
-            TopToggle(systemName: flashIcon,
-                      title: nil,
-                      isActive: camera.flashMode != .off) { camera.cycleFlash() }
+            if camera.mode == .photo {
+                TopToggle(systemName: flashIcon,
+                          title: nil,
+                          isActive: camera.flashMode != .off) { camera.cycleFlash() }
 
-            TopToggle(systemName: "timer",
-                      title: camera.timerSeconds > 0 ? "\(camera.timerSeconds)" : nil,
-                      isActive: camera.timerSeconds > 0) { camera.cycleTimer() }
+                TopToggle(systemName: "timer",
+                          title: camera.timerSeconds > 0 ? "\(camera.timerSeconds)" : nil,
+                          isActive: camera.timerSeconds > 0) { camera.cycleTimer() }
+            } else {
+                TopToggle(systemName: camera.torchOn ? "flashlight.on.fill" : "flashlight.off.fill",
+                          title: nil,
+                          isActive: camera.torchOn) { camera.toggleTorch() }
+                    .opacity(camera.position == .back ? 1 : 0.3)
+            }
 
             Spacer()
 
@@ -60,6 +70,11 @@ struct CameraScreen: View {
             TopToggle(systemName: "level",
                       title: nil,
                       isActive: camera.showsLevel) { camera.showsLevel.toggle() }
+        }
+        .overlay {
+            if camera.isRecording {
+                RecordingTime(duration: camera.recordingDuration)
+            }
         }
         .padding(.horizontal, 22)
         .frame(height: 44)
@@ -115,9 +130,9 @@ struct CameraScreen: View {
                 camera.resetFocus()
             }
         }
-        .aspectRatio(camera.ratio.aspect, contentMode: .fit)
+        .aspectRatio(camera.previewAspect, contentMode: .fit)
         .clipped()
-        .animation(.easeInOut(duration: 0.25), value: camera.ratio)
+        .animation(.easeInOut(duration: 0.25), value: camera.previewAspect)
     }
 
     // MARK: - 노출 슬라이더
@@ -145,24 +160,45 @@ struct CameraScreen: View {
     // MARK: - 하단
 
     private var bottomBar: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 14) {
             HStack(spacing: 10) {
-                chip(camera.ratio.label, active: camera.ratio == .fourThree) {
-                    camera.toggleRatio()
-                }
-                chip(camera.lookPreset.rawValue, active: camera.lookPreset != .off) {
-                    camera.cycleLook()
+                if camera.mode == .photo {
+                    chip(camera.ratio.label, active: camera.ratio == .fourThree) {
+                        camera.toggleRatio()
+                    }
+                    chip(camera.lookPreset.rawValue, active: camera.lookPreset != .off) {
+                        camera.cycleLook()
+                    }
+                } else {
+                    chip(camera.camcorderPreset.rawValue, active: camera.camcorderPreset != .off) {
+                        camera.cycleCamcorder()
+                    }
+                    chip("DATE", active: camera.showsDateStamp) {
+                        camera.toggleDateStamp()
+                    }
                 }
             }
+            .disabled(camera.isRecording)
+
+            // 녹화 중엔 모드를 바꿀 수 없으니 숨긴다 (자리는 유지)
+            ModePicker(selection: camera.mode) { camera.setMode($0) }
+                .opacity(camera.isRecording ? 0 : 1)
+                .disabled(camera.isRecording)
 
             HStack {
                 thumbnailButton
                 Spacer()
-                ShutterButton(isBusy: camera.isCapturing) {
-                    if camera.countdown > 0 {
-                        camera.cancelTimer()
-                    } else {
-                        camera.shutterTapped()
+                if camera.mode == .photo {
+                    ShutterButton(isBusy: camera.isCapturing) {
+                        if camera.countdown > 0 {
+                            camera.cancelTimer()
+                        } else {
+                            camera.shutterTapped()
+                        }
+                    }
+                } else {
+                    RecordButton(isRecording: camera.isRecording) {
+                        camera.recordTapped()
                     }
                 }
                 Spacer()
@@ -176,10 +212,12 @@ struct CameraScreen: View {
                         .background(Color.white.opacity(0.14), in: Circle())
                 }
                 .buttonStyle(.plain)
+                .opacity(camera.isRecording ? 0.3 : 1)
+                .disabled(camera.isRecording)
             }
             .padding(.horizontal, 34)
         }
-        .padding(.bottom, 22)
+        .padding(.bottom, 16)
     }
 
     private var thumbnailButton: some View {
