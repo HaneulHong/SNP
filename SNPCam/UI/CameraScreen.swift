@@ -5,6 +5,7 @@ import UIKit
 struct CameraScreen: View {
     @StateObject private var camera = CameraManager()
     @StateObject private var motion = MotionManager()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
@@ -37,6 +38,10 @@ struct CameraScreen: View {
         }
         .onChange(of: camera.ratio) { _, _ in camera.syncLook() }
         .onChange(of: camera.lookPreset) { _, _ in camera.syncLook() }
+        .onChange(of: scenePhase) { _, phase in
+            // 기본 카메라처럼 앱을 벗어나면 녹화를 끝내고 저장한다
+            if phase == .background { camera.stopRecording() }
+        }
     }
 
     // MARK: - 상단
@@ -52,6 +57,11 @@ struct CameraScreen: View {
                       isActive: camera.timerSeconds > 0) { camera.cycleTimer() }
 
             Spacer()
+
+            if let startedAt = camera.recordingStartedAt {
+                RecordingClock(startedAt: startedAt)
+                Spacer()
+            }
 
             TopToggle(systemName: "grid",
                       title: nil,
@@ -145,25 +155,29 @@ struct CameraScreen: View {
     // MARK: - 하단
 
     private var bottomBar: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 16) {
             HStack(spacing: 10) {
+                // 녹화 중에는 파일 크기가 정해져 있어서 비율을 바꿀 수 없다
                 chip(camera.ratio.label, active: camera.ratio == .fourThree) {
                     camera.toggleRatio()
                 }
+                .disabled(camera.isRecording)
+                .opacity(camera.isRecording ? 0.35 : 1)
+
                 chip(camera.lookPreset.rawValue, active: camera.lookPreset != .off) {
                     camera.cycleLook()
                 }
             }
 
+            modePicker
+
             HStack {
                 thumbnailButton
                 Spacer()
-                ShutterButton(isBusy: camera.isCapturing) {
-                    if camera.countdown > 0 {
-                        camera.cancelTimer()
-                    } else {
-                        camera.shutterTapped()
-                    }
+                if camera.captureMode == .video {
+                    RecordButton(isRecording: camera.isRecording) { shutterAction() }
+                } else {
+                    ShutterButton(isBusy: camera.isCapturing) { shutterAction() }
                 }
                 Spacer()
                 Button {
@@ -176,10 +190,43 @@ struct CameraScreen: View {
                         .background(Color.white.opacity(0.14), in: Circle())
                 }
                 .buttonStyle(.plain)
+                .disabled(camera.isRecording)
+                .opacity(camera.isRecording ? 0.35 : 1)
             }
             .padding(.horizontal, 34)
         }
         .padding(.bottom, 22)
+    }
+
+    private func shutterAction() {
+        if camera.countdown > 0 {
+            camera.cancelTimer()
+        } else {
+            camera.shutterTapped()
+        }
+    }
+
+    /// 기본 카메라처럼 셔터 위의 "비디오 / 사진" 글자로 모드를 바꾼다
+    private var modePicker: some View {
+        HStack(spacing: 24) {
+            modeButton("비디오", mode: .video)
+            modeButton("사진", mode: .photo)
+        }
+        .opacity(camera.isRecording ? 0 : 1)
+        .disabled(camera.isRecording)
+    }
+
+    private func modeButton(_ title: String, mode: CaptureMode) -> some View {
+        Button {
+            camera.setCaptureMode(mode)
+        } label: {
+            Text(title)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(camera.captureMode == mode ? Color.yellow : Color.white)
+                .padding(.vertical, 4)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var thumbnailButton: some View {

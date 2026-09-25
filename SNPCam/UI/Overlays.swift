@@ -96,6 +96,45 @@ struct ShutterButton: View {
     }
 }
 
+/// 기본 카메라와 같은 녹화 버튼 — 대기 중엔 빨간 원, 녹화 중엔 빨간 네모
+struct RecordButton: View {
+    let isRecording: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .stroke(Color.white, lineWidth: 3)
+                    .frame(width: 72, height: 72)
+                RoundedRectangle(cornerRadius: isRecording ? 6 : 30, style: .continuous)
+                    .fill(Color.red)
+                    .frame(width: isRecording ? 28 : 60, height: isRecording ? 28 : 60)
+            }
+            .animation(.easeInOut(duration: 0.2), value: isRecording)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// 녹화 시간 — 상단 가운데 빨간 배지
+struct RecordingClock: View {
+    let startedAt: Date
+
+    var body: some View {
+        TimelineView(.periodic(from: startedAt, by: 1)) { context in
+            let seconds = max(0, Int(context.date.timeIntervalSince(startedAt)))
+            Text(String(format: "%02d:%02d", seconds / 60, seconds % 60))
+                .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Color.red, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+        }
+        .allowsHitTesting(false)
+    }
+}
+
 /// 상단 아이콘 토글
 struct TopToggle: View {
     let systemName: String
