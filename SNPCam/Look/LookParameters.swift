@@ -41,10 +41,15 @@ struct LookParameters: Equatable {
     var glareAmount: Double = 0.30
     var glareRadius: Double = 10
 
+    // MARK: 6. 센서
+    /// 저장 해상도의 긴 변 — 3264 = 8MP (5s·6), 4032 = 12MP (6s)
+    var sensorLongSide: Double = 3264
+
     // MARK: 프리셋
+    /// iPhone 5s (2013) — 8MP, 차갑고 옅은 색, 좁은 다이나믹 레인지
     static let standard = LookParameters()
 
-    /// 더 강하게 — 실내 저조도 5s 느낌
+    /// 5s 를 더 강하게 — 실내 저조도 5s 느낌 (실제 기종이 아님)
     static var strong: LookParameters {
         var p = LookParameters()
         p.blackLift = 0.075
@@ -56,6 +61,47 @@ struct LookParameters: Equatable {
         p.softness = 1.4
         p.vignetteIntensity = 0.75
         p.glareAmount = 0.45
+        return p
+    }
+
+    /// iPhone 6 (2014) — 같은 8MP 지만 A8 ISP 로 색이 중립에 가까워지고
+    /// 하이라이트가 덜 날아간다. 노이즈 리덕션이 세져서 결은 줄고 뭉개짐이 는다.
+    static var iPhone6: LookParameters {
+        var p = LookParameters()
+        p.blackLift = 0.045
+        p.highlightRolloff = 0.95
+        p.midContrast = 1.04
+        p.targetTemperature = 6150
+        p.targetTint = 3
+        p.saturation = 0.92
+        p.softness = 1.1
+        p.sharpenIntensity = 0.45
+        p.grainAmount = 0.40
+        p.grainSize = 2.4
+        p.vignetteIntensity = 0.50
+        p.glareAmount = 0.28
+        return p
+    }
+
+    /// iPhone 6s (2015) — 12MP 로 올라가며 디테일과 샤프닝이 늘고 색이 더 따뜻·진해진다.
+    /// 픽셀이 작아져(1.5 → 1.22µm) 노이즈 알갱이는 더 잘다.
+    static var iPhone6s: LookParameters {
+        var p = LookParameters()
+        p.blackLift = 0.04
+        p.highlightRolloff = 0.955
+        p.midContrast = 1.06
+        p.targetTemperature = 6400
+        p.targetTint = 3
+        p.saturation = 0.95
+        p.softness = 0.7
+        p.sharpenIntensity = 0.6
+        p.sharpenRadius = 2.0
+        p.grainAmount = 0.45
+        p.grainSize = 1.8
+        p.shadowGrainBias = 0.85
+        p.vignetteIntensity = 0.45
+        p.glareAmount = 0.25
+        p.sensorLongSide = 4032
         return p
     }
 
@@ -80,6 +126,8 @@ struct LookParameters: Equatable {
 enum LookPreset: String, CaseIterable, Identifiable {
     case standard = "5s"
     case strong   = "5s+"
+    case iPhone6  = "6"
+    case iPhone6s = "6s"
     case off      = "OFF"
 
     var id: String { rawValue }
@@ -88,6 +136,8 @@ enum LookPreset: String, CaseIterable, Identifiable {
         switch self {
         case .standard: return .standard
         case .strong:   return .strong
+        case .iPhone6:  return .iPhone6
+        case .iPhone6s: return .iPhone6s
         case .off:      return .off
         }
     }
