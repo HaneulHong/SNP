@@ -133,8 +133,11 @@ enum RetroLook {
     // MARK: - 그레인
 
     /// 무한 범위의 랜덤 노이즈. 매 호출마다 offset 만 바꿔 재사용한다.
+    /// 생성기는 알파까지 무작위라서, 그대로 색 행렬에 넣으면 알파로 나누는 과정에서 값이 수천 배로 튀어
+    /// 흰 잡티가 생긴다. 검정 위에 얹어 알파를 1 로 고정한다.
     private static let randomNoise: CIImage = {
-        CIFilter.randomGenerator().outputImage ?? CIImage(color: .gray)
+        (CIFilter.randomGenerator().outputImage ?? CIImage(color: .gray))
+            .composited(over: CIImage(color: .black))
     }()
 
     private static func applyGrain(_ image: CIImage,
