@@ -155,6 +155,31 @@ struct RecordingTime: View {
     }
 }
 
+/// 줌 배지 — 탭하면 1× ⇄ 2×, 핀치로 움직인 배율도 그대로 보여준다
+struct ZoomBadge: View {
+    let zoom: CGFloat
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(zoom > 1.01 ? Color.yellow : Color.white)
+                .frame(minWidth: 36, minHeight: 36)
+                .background(Color.black.opacity(0.35), in: Circle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// 1× · 2× 처럼 딱 떨어지면 정수로, 아니면 2.4× 처럼 한 자리
+    private var label: String {
+        let tenth = (zoom * 10).rounded() / 10
+        return tenth == tenth.rounded()
+            ? "\(Int(tenth))×"
+            : String(format: "%.1f×", Double(tenth))
+    }
+}
+
 /// 상단 아이콘 토글
 struct TopToggle: View {
     let systemName: String

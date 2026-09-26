@@ -23,6 +23,8 @@ final class CameraManager: NSObject, ObservableObject {
     @Published private(set) var camcorderPreset: CamcorderPreset = .dv
     @Published private(set) var showsDateStamp = true
     @Published private(set) var torchOn = false
+    /// 디지털 줌 배율 (1 ... 4). 룩의 기본 화각 위에 곱해진다
+    @Published private(set) var zoom: CGFloat = 1
     @Published private(set) var isRecording = false
     @Published private(set) var recordingDuration: TimeInterval = 0
 
@@ -66,6 +68,7 @@ final class CameraManager: NSObject, ObservableObject {
 
     /// 현재 룩 파라미터 (백그라운드 큐에서도 읽으므로 별도 저장)
     private var currentParams = LookParameters.film
+    private var currentZoom: CGFloat = 1
     private var currentRatio: FrameRatio = .square
     private var currentMode: CaptureMode = .photo
     private var currentCamcorder = CamcorderParameters.dv
@@ -194,7 +197,7 @@ final class CameraManager: NSObject, ObservableObject {
         let focal = currentMode == .photo ? currentParams.focalLength : LegacyLens.backFocalLength
         do {
             try device.lockForConfiguration()
-            LegacyLens.applyFieldOfView(to: device, backFocal: focal)
+            LegacyLens.applyFieldOfView(to: device, backFocal: focal, userZoom: currentZoom)
             LegacyLens.disableVideoHDR(on: device)
             device.unlockForConfiguration()
         } catch { }
@@ -350,9 +353,24 @@ final class CameraManager: NSObject, ObservableObject {
         }
     }
 
+    /// 디지털 줌 1~4배 — 옛날 아이폰처럼 렌즈를 바꾸지 않고 가운데를 잘라 키운다
+    func setZoom(_ value: CGFloat) {
+        let clamped = min(max(value, 1), LegacyLens.maxUserZoom)
+        guard abs(clamped - zoom) > 0.001 else { return }
+        zoom = clamped
+        currentZoom = clamped
+        sessionQueue.async { [weak self] in
+            guard let self, let device = self.videoInput?.device else { return }
+            self.configureLens(device)
+        }
+    }
+
     func switchCamera() {
         guard !isRecording else { return }
         if torchOn { setTorch(false) }
+        // 기본 카메라처럼 전·후면을 바꾸면 줌은 1배로
+        zoom = 1
+        currentZoom = 1
         let target: AVCaptureDevice.Position = (position == .back) ? .front : .back
         sessionQueue.async { [weak self] in
             guard let self,

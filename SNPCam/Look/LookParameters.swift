@@ -109,22 +109,6 @@ struct LookParameters: Equatable {
         return p
     }
 
-    /// 5s 를 더 강하게 — 실내 저조도 5s 느낌 (실제 기종이 아님)
-    static var strong: LookParameters {
-        var p = LookParameters()
-        p.blackLift = 0.075
-        p.highlightRolloff = 0.90
-        p.saturation = 0.82
-        p.targetTemperature = 5700
-        p.grainAmount = 0.85
-        p.grainSize = 2.8
-        p.softness = 1.4
-        p.vignetteIntensity = 0.75
-        p.glareAmount = 0.45
-        p.hazeAmount = 0.35
-        return p
-    }
-
     /// iPhone 6s (2015) — 12MP 로 올라가며 디테일이 늘고, 요즘 "느좋" 으로 꼽히는
     /// 어둡고 따뜻한 저채도 색감. 요즘 아이폰 같은 과한 샤프닝은 없다.
     /// 픽셀이 작아져(1.5 → 1.22µm) 노이즈 알갱이는 더 잘다.
@@ -151,49 +135,10 @@ struct LookParameters: Equatable {
         return p
     }
 
-    /// 6s 를 더 강하게 — 실내 저조도 6s 느낌 (실제 기종 6s Plus 가 아님)
-    /// 노이즈 리덕션이 못 따라가 결이 거칠어지고, 조명 탓에 더 따뜻해진다.
-    static var iPhone6sStrong: LookParameters {
-        var p = LookParameters.iPhone6s
-        p.blackLift = 0.06
-        p.highlightRolloff = 0.925
-        p.midGamma = 1.15
-        p.targetTemperature = 6950
-        p.targetTint = 4
-        p.saturation = 0.88
-        p.softness = 1.0
-        p.grainAmount = 0.75
-        p.grainSize = 2.0
-        p.vignetteIntensity = 0.65
-        p.glareAmount = 0.40
-        p.hazeAmount = 0.40
-        return p
-    }
-
-    /// 룩 비활성 (원본 그대로)
-    static var off: LookParameters {
-        var p = LookParameters()
-        p.blackLift = 0
-        p.highlightRolloff = 1
-        p.midContrast = 1
-        p.targetTemperature = 6500
-        p.targetTint = 0
-        p.saturation = 1
-        p.softness = 0
-        p.sharpenIntensity = 0
-        p.grainAmount = 0
-        p.vignetteIntensity = 0
-        p.glareAmount = 0
-        p.hazeAmount = 0
-        p.frontSensorLongSide = p.sensorLongSide
-        return p
-    }
-
     /// 플래시가 터진 사진 — 2010년대 파티·거울 셀카처럼 얼굴은 하얗게 뜨고,
     /// 가장자리는 빛이 못 닿아 빨리 어두워지고, 반짝이는 것에 하이라이트가 번진다.
     /// 플래시는 찍는 순간에만 터지므로 프리뷰에는 보이지 않고 저장본에만 걸린다.
     func withFlash() -> LookParameters {
-        guard self != .off else { return self }
         var p = self
         p.highlightRolloff = max(0.85, p.highlightRolloff - 0.02)
         p.midContrast += 0.08
@@ -205,13 +150,11 @@ struct LookParameters: Equatable {
     }
 }
 
+/// 룩은 세 가지만 — 필름 카메라 하나, 옛날 아이폰 둘 (차가운 5s / 따뜻한 6s)
 enum LookPreset: String, CaseIterable, Identifiable {
     case film     = "FILM"
     case standard = "5s"
-    case strong   = "5s+"
     case iPhone6s = "6s"
-    case iPhone6sStrong = "6s+"
-    case off      = "OFF"
 
     var id: String { rawValue }
 
@@ -219,10 +162,7 @@ enum LookPreset: String, CaseIterable, Identifiable {
         switch self {
         case .film:     return .film
         case .standard: return .standard
-        case .strong:   return .strong
         case .iPhone6s: return .iPhone6s
-        case .iPhone6sStrong: return .iPhone6sStrong
-        case .off:      return .off
         }
     }
 }
