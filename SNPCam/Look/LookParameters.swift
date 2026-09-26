@@ -20,6 +20,8 @@ struct LookParameters: Equatable {
     /// + 값이면 마젠타, - 값이면 그린
     var targetTint: Double = 6
     var saturation: Double = 0.88
+    /// 35mm 필름 색 (FilmColor) 을 얼마나 섞을지 — 0 = 없음, 1 = 100%
+    var filmColor: Double = 0
 
     // MARK: 3. 소프트 디테일 + ISP 샤프닝 헤일로
     /// 광학 해상력 부족을 흉내내는 미세 블러 (px @3264)
@@ -48,10 +50,21 @@ struct LookParameters: Equatable {
     /// 광원 주변 베일링 글레어 (플레어)
     var glareAmount: Double = 0.30
     var glareRadius: Double = 10
+    /// 할레이션 — 밝은 곳 가장자리의 붉은 번짐 (필름 뒷면 반사). 0 = 없음
+    var halation: Double = 0
+
+    // MARK: 5-1. 심도·거리감 (DepthEffect — 저장본에만)
+    /// 사람 뒤 배경 흐림 반경 (px @3264). 0 = 없음
+    var depthBlur: Double = 0
+    /// 배경을 밝은 공기 쪽으로 옅게 — 먼 곳이 뿌옇게 보이는 공기 원근. 0 = 없음
+    var depthHaze: Double = 0
 
     // MARK: 6. 센서
     /// 저장 해상도의 긴 변 — 3264 = 8MP (5s), 4032 = 12MP (6s)
     var sensorLongSide: Double = 3264
+    /// 후면 35mm 환산 초점거리 — 29 = iPhone 5s~6s, 35 = Leica minilux zoom 광각 끝
+    /// 요즘 메인 렌즈(24~26mm)의 가운데를 잘라 이 화각에 맞춘다 (LegacyLens)
+    var focalLength: Double = 29
     /// 셀카 저장 해상도의 긴 변 — 1280 = 1.2MP (5s 전면), 2576 = 5MP (6s 전면)
     /// 저화질 셀카가 피부를 뭉개 줘서 오히려 인기
     var frontSensorLongSide: Double = 1280
@@ -59,6 +72,42 @@ struct LookParameters: Equatable {
     // MARK: 프리셋
     /// iPhone 5s (2013) — 8MP, 차갑고 옅은 색, 좁은 다이나믹 레인지
     static let standard = LookParameters()
+
+    /// 35mm 컬러 필름 — 여름 해변 필름 사진 레퍼런스 (Leica minilux zoom 으로 찍은 사진).
+    /// 진한 빨강·노랑, 올리브 초록, 청록 파랑, 황금빛 피부, 크림빛 하이라이트,
+    /// 사람 뒤 배경은 살짝 흐리고 옅게 (심도·거리감), 고운 필름 그레인, 은은한 할레이션.
+    /// - 화각: minilux zoom 의 광각 끝 35mm — 폰보다 좁고 원근 왜곡이 적어 거리감이 자연스럽다
+    /// - 심도: f/3.5~6.5 로 어두운 똑딱이 렌즈라 배경이 크게 녹지 않는다 → 흐림은 약하게
+    /// - 해상도: 필름 현상소 스캔(약 3000px) 급 8MP. 35mm 로 잘라도 확대가 생기지 않는다
+    static var film: LookParameters {
+        var p = LookParameters()
+        p.blackLift = 0.035
+        p.highlightRolloff = 0.965
+        p.midContrast = 1.08
+        p.midGamma = 0.95
+        p.targetTemperature = 6900
+        p.targetTint = 2
+        p.saturation = 1.02
+        p.filmColor = 1.0
+        p.softness = 0.5
+        p.sharpenIntensity = 0.2
+        p.sharpenRadius = 2.0
+        p.hazeAmount = 0.15
+        p.grainAmount = 0.35
+        p.grainSize = 1.7
+        p.shadowGrainBias = 0.5
+        p.vignetteIntensity = 0.30
+        p.vignetteRadius = 1.6
+        p.glareAmount = 0.18
+        p.glareRadius = 12
+        p.halation = 0.25
+        p.depthBlur = 12
+        p.depthHaze = 0.10
+        p.focalLength = 35
+        p.sensorLongSide = 3264
+        p.frontSensorLongSide = 3264
+        return p
+    }
 
     /// 5s 를 더 강하게 — 실내 저조도 5s 느낌 (실제 기종이 아님)
     static var strong: LookParameters {
@@ -157,6 +206,7 @@ struct LookParameters: Equatable {
 }
 
 enum LookPreset: String, CaseIterable, Identifiable {
+    case film     = "FILM"
     case standard = "5s"
     case strong   = "5s+"
     case iPhone6s = "6s"
@@ -167,6 +217,7 @@ enum LookPreset: String, CaseIterable, Identifiable {
 
     var parameters: LookParameters {
         switch self {
+        case .film:     return .film
         case .standard: return .standard
         case .strong:   return .strong
         case .iPhone6s: return .iPhone6s
