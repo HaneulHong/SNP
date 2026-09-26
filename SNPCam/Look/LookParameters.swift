@@ -20,6 +20,8 @@ struct LookParameters: Equatable {
     /// + 값이면 마젠타, - 값이면 그린
     var targetTint: Double = 6
     var saturation: Double = 0.88
+    /// 35mm 필름 색 (FilmColor) 을 얼마나 섞을지 — 0 = 없음, 1 = 100%
+    var filmColor: Double = 0
 
     // MARK: 3. 소프트 디테일 + ISP 샤프닝 헤일로
     /// 광학 해상력 부족을 흉내내는 미세 블러 (px @3264)
@@ -48,6 +50,14 @@ struct LookParameters: Equatable {
     /// 광원 주변 베일링 글레어 (플레어)
     var glareAmount: Double = 0.30
     var glareRadius: Double = 10
+    /// 할레이션 — 밝은 곳 가장자리의 붉은 번짐 (필름 뒷면 반사). 0 = 없음
+    var halation: Double = 0
+
+    // MARK: 5-1. 심도·거리감 (DepthEffect — 저장본에만)
+    /// 사람 뒤 배경 흐림 반경 (px @3264). 0 = 없음
+    var depthBlur: Double = 0
+    /// 배경을 밝은 공기 쪽으로 옅게 — 먼 곳이 뿌옇게 보이는 공기 원근. 0 = 없음
+    var depthHaze: Double = 0
 
     // MARK: 6. 센서
     /// 저장 해상도의 긴 변 — 3264 = 8MP (5s), 4032 = 12MP (6s)
@@ -59,6 +69,38 @@ struct LookParameters: Equatable {
     // MARK: 프리셋
     /// iPhone 5s (2013) — 8MP, 차갑고 옅은 색, 좁은 다이나믹 레인지
     static let standard = LookParameters()
+
+    /// 35mm 컬러 필름 — 여름 해변 필름 사진 레퍼런스.
+    /// 진한 빨강·노랑, 올리브 초록, 청록 파랑, 황금빛 피부, 크림빛 하이라이트,
+    /// 사람 뒤 배경은 흐리고 옅게 (심도·거리감), 고운 필름 그레인, 은은한 할레이션.
+    static var film: LookParameters {
+        var p = LookParameters()
+        p.blackLift = 0.035
+        p.highlightRolloff = 0.965
+        p.midContrast = 1.08
+        p.midGamma = 0.95
+        p.targetTemperature = 6900
+        p.targetTint = 2
+        p.saturation = 1.02
+        p.filmColor = 1.0
+        p.softness = 0.5
+        p.sharpenIntensity = 0.2
+        p.sharpenRadius = 2.0
+        p.hazeAmount = 0.15
+        p.grainAmount = 0.35
+        p.grainSize = 1.7
+        p.shadowGrainBias = 0.5
+        p.vignetteIntensity = 0.30
+        p.vignetteRadius = 1.6
+        p.glareAmount = 0.18
+        p.glareRadius = 12
+        p.halation = 0.25
+        p.depthBlur = 26
+        p.depthHaze = 0.10
+        p.sensorLongSide = 4032
+        p.frontSensorLongSide = 4032
+        return p
+    }
 
     /// 5s 를 더 강하게 — 실내 저조도 5s 느낌 (실제 기종이 아님)
     static var strong: LookParameters {
@@ -157,6 +199,7 @@ struct LookParameters: Equatable {
 }
 
 enum LookPreset: String, CaseIterable, Identifiable {
+    case film     = "FILM"
     case standard = "5s"
     case strong   = "5s+"
     case iPhone6s = "6s"
@@ -167,6 +210,7 @@ enum LookPreset: String, CaseIterable, Identifiable {
 
     var parameters: LookParameters {
         switch self {
+        case .film:     return .film
         case .standard: return .standard
         case .strong:   return .strong
         case .iPhone6s: return .iPhone6s

@@ -14,7 +14,7 @@ final class CameraManager: NSObject, ObservableObject {
     @Published private(set) var mode: CaptureMode = .photo
 
     @Published var ratio: FrameRatio = .square
-    @Published var lookPreset: LookPreset = .standard
+    @Published var lookPreset: LookPreset = .film
     @Published var flashMode: AVCaptureDevice.FlashMode = .off
     @Published var timerSeconds: Int = 0
     @Published var showsGrid = false
@@ -65,7 +65,7 @@ final class CameraManager: NSObject, ObservableObject {
     private var frameSeed: Double = 0
 
     /// 현재 룩 파라미터 (백그라운드 큐에서도 읽으므로 별도 저장)
-    private var currentParams = LookParameters.standard
+    private var currentParams = LookParameters.film
     private var currentRatio: FrameRatio = .square
     private var currentMode: CaptureMode = .photo
     private var currentCamcorder = CamcorderParameters.dv

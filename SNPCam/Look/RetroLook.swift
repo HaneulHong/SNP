@@ -43,6 +43,9 @@ enum RetroLook {
             ])
         }
 
+        // ── 2-1. 35mm 필름 색 (FILM 프리셋)
+        image = FilmColor.apply(to: image, amount: params.filmColor)
+
         // ── 3. 낮은 다이나믹 레인지: 들린 블랙 + 눌린 하이라이트
         image = applyToneCurve(image, params: params)
 
@@ -54,6 +57,11 @@ enum RetroLook {
                     kCIInputIntensityKey: params.glareAmount
                 ])
                 .cropped(to: extent)
+        }
+
+        // ── 4-0. 할레이션: 아주 밝은 곳만 골라 흐린 뒤 붉은 주황으로 더한다
+        if params.halation > 0 {
+            image = applyHalation(image, amount: params.halation, scale: scale, extent: extent)
         }
 
         // ── 4-1. 뿌연 헤이즈: 흐린 사본 중 밝은 쪽만 남겨 섞는다
@@ -105,6 +113,48 @@ enum RetroLook {
         }
 
         return image.cropped(to: extent)
+    }
+
+    // MARK: - 할레이션
+
+    private static func applyHalation(_ image: CIImage,
+                                      amount: Double,
+                                      scale: Double,
+                                      extent: CGRect) -> CIImage {
+        // 밝기만 뽑아서 아주 밝은 곳(0.7 이상)만 남긴다
+        let luma = CIVector(x: 0.2126, y: 0.7152, z: 0.0722, w: 0)
+        let highlights = image
+            .applyingFilter("CIColorMatrix", parameters: [
+                "inputRVector": luma,
+                "inputGVector": luma,
+                "inputBVector": luma,
+                "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 1)
+            ])
+            .applyingFilter("CIToneCurve", parameters: [
+                "inputPoint0": CIVector(x: 0.00, y: 0),
+                "inputPoint1": CIVector(x: 0.70, y: 0),
+                "inputPoint2": CIVector(x: 0.85, y: 0.35),
+                "inputPoint3": CIVector(x: 0.95, y: 0.8),
+                "inputPoint4": CIVector(x: 1.00, y: 1)
+            ])
+
+        // 번지게 한 뒤 붉은 주황으로 물들인다
+        let glow = highlights.clampedToExtent()
+            .applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: 10 * scale])
+            .cropped(to: extent)
+            .applyingFilter("CIColorMatrix", parameters: [
+                "inputRVector": CIVector(x: amount, y: 0, z: 0, w: 0),
+                "inputGVector": CIVector(x: 0, y: amount * 0.35, z: 0, w: 0),
+                "inputBVector": CIVector(x: 0, y: 0, z: amount * 0.12, w: 0),
+                "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 1)
+            ])
+
+        return glow
+            .applyingFilter("CIAdditionCompositing", parameters: [
+                kCIInputBackgroundImageKey: image
+            ])
+            .applyingFilter("CIColorClamp")
+            .cropped(to: extent)
     }
 
     // MARK: - 톤 커브

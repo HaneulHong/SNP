@@ -35,7 +35,10 @@ enum PhotoProcessor {
         let longSide = mirrored ? params.frontSensorLongSide : params.sensorLongSide
         image = resize(image, to: ratio.outputSize(sensorLongSide: CGFloat(longSide)))
 
-        // 3. 룩 적용
+        // 3. 심도·거리감 — 렌즈에서 생기는 흐림이므로 색·그레인보다 먼저 (FILM 프리셋)
+        image = DepthEffect.apply(to: image, params: params)
+
+        // 4. 룩 적용
         let looked = RetroLook.apply(to: image,
                                      params: params,
                                      quality: .full,
