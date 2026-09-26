@@ -190,9 +190,11 @@ final class CameraManager: NSObject, ObservableObject {
 
     /// 렌즈 하나 고정 + 5s~6s 화각. 포맷이 바뀌면 줌이 풀리므로 세션을 건드릴 때마다 다시 건다.
     private func configureLens(_ device: AVCaptureDevice) {
+        // 사진은 룩이 정한 화각 (FILM = 35mm), 비디오는 옛날 아이폰 29mm
+        let focal = currentMode == .photo ? currentParams.focalLength : LegacyLens.backFocalLength
         do {
             try device.lockForConfiguration()
-            LegacyLens.applyFieldOfView(to: device)
+            LegacyLens.applyFieldOfView(to: device, backFocal: focal)
             LegacyLens.disableVideoHDR(on: device)
             device.unlockForConfiguration()
         } catch { }
@@ -285,7 +287,15 @@ final class CameraManager: NSObject, ObservableObject {
         if let i = all.firstIndex(of: lookPreset) {
             lookPreset = all[(i + 1) % all.count]
         }
+        let focalChanged = currentParams.focalLength != lookPreset.parameters.focalLength
         currentParams = lookPreset.parameters
+
+        // 룩마다 화각이 다르면 렌즈를 다시 맞춘다 (프리뷰도 같이 좁아진다)
+        guard focalChanged else { return }
+        sessionQueue.async { [weak self] in
+            guard let self, let device = self.videoInput?.device else { return }
+            self.configureLens(device)
+        }
     }
 
     func cycleCamcorder() {
