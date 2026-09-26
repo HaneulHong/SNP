@@ -162,8 +162,8 @@ struct CameraScreen: View {
     private var bottomBar: some View {
         VStack(spacing: 14) {
             HStack(spacing: 10) {
-                // 비율(5:5 / 4:3)은 사진·비디오 공통
-                chip(camera.ratio.label, active: camera.ratio == .fourThree) {
+                // 비율(5:5 / 3:2)은 사진·비디오 공통
+                chip(camera.ratio.label, active: camera.ratio == .threeTwo) {
                     camera.toggleRatio()
                 }
                 if camera.mode == .photo {

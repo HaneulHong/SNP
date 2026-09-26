@@ -411,11 +411,13 @@ final class CameraManager: NSObject, ObservableObject {
             self.focusIndicator = FocusIndicator(point: viewPoint, id: UUID())
         }
 
-        // 뷰 → 세로 프레임 전체 → 센서 좌표 (세로 버퍼는 3:4, 더 넓은 비율이면 위아래를 잘라 쓴다)
-        let cropFraction = min(1, (3.0 / 4.0) / currentRatio.aspect)
-        let topInset = (1 - cropFraction) / 2
-        let pu = normalized.x
-        let pv = topInset + normalized.y * cropFraction
+        // 뷰 → 세로 프레임 전체 → 센서 좌표. 세로 버퍼는 3:4 라서
+        // 더 넓은 비율(5:5)이면 위아래를, 더 좁은 비율(3:2)이면 좌우를 잘라 쓴다
+        let bufferAspect: CGFloat = 3.0 / 4.0
+        let fractionX = min(1, currentRatio.aspect / bufferAspect)
+        let fractionY = min(1, bufferAspect / currentRatio.aspect)
+        let pu = (1 - fractionX) / 2 + normalized.x * fractionX
+        let pv = (1 - fractionY) / 2 + normalized.y * fractionY
 
         let poi: CGPoint = isFrontCamera
             ? CGPoint(x: pv, y: pu)
