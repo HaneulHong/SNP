@@ -5,7 +5,6 @@ import UIKit
 struct CameraScreen: View {
     @StateObject private var camera = CameraManager()
     @StateObject private var motion = MotionManager()
-    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
@@ -38,9 +37,8 @@ struct CameraScreen: View {
         }
         .onChange(of: camera.ratio) { _, _ in camera.syncLook() }
         .onChange(of: camera.lookPreset) { _, _ in camera.syncLook() }
-        .onChange(of: scenePhase) { _, phase in
-            // 기본 카메라처럼 앱을 벗어나면 녹화를 끝내고 저장한다
-            if phase == .background { camera.stopRecording() }
+        .onChange(of: motion.captureOrientation, initial: true) { _, orientation in
+            camera.updateOrientation(orientation)
         }
     }
 
@@ -48,20 +46,22 @@ struct CameraScreen: View {
 
     private var topBar: some View {
         HStack(spacing: 4) {
-            TopToggle(systemName: flashIcon,
-                      title: nil,
-                      isActive: camera.flashMode != .off) { camera.cycleFlash() }
+            if camera.mode == .photo {
+                TopToggle(systemName: flashIcon,
+                          title: nil,
+                          isActive: camera.flashMode != .off) { camera.cycleFlash() }
 
-            TopToggle(systemName: "timer",
-                      title: camera.timerSeconds > 0 ? "\(camera.timerSeconds)" : nil,
-                      isActive: camera.timerSeconds > 0) { camera.cycleTimer() }
+                TopToggle(systemName: "timer",
+                          title: camera.timerSeconds > 0 ? "\(camera.timerSeconds)" : nil,
+                          isActive: camera.timerSeconds > 0) { camera.cycleTimer() }
+            } else {
+                TopToggle(systemName: camera.torchOn ? "flashlight.on.fill" : "flashlight.off.fill",
+                          title: nil,
+                          isActive: camera.torchOn) { camera.toggleTorch() }
+                    .opacity(camera.position == .back ? 1 : 0.3)
+            }
 
             Spacer()
-
-            if let startedAt = camera.recordingStartedAt {
-                RecordingClock(startedAt: startedAt)
-                Spacer()
-            }
 
             TopToggle(systemName: "grid",
                       title: nil,
@@ -70,6 +70,11 @@ struct CameraScreen: View {
             TopToggle(systemName: "level",
                       title: nil,
                       isActive: camera.showsLevel) { camera.showsLevel.toggle() }
+        }
+        .overlay {
+            if camera.isRecording {
+                RecordingTime(duration: camera.recordingDuration)
+            }
         }
         .padding(.horizontal, 22)
         .frame(height: 44)
@@ -155,29 +160,47 @@ struct CameraScreen: View {
     // MARK: - 하단
 
     private var bottomBar: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 14) {
             HStack(spacing: 10) {
-                // 녹화 중에는 파일 크기가 정해져 있어서 비율을 바꿀 수 없다
+                // 비율(5:5 / 4:3)은 사진·비디오 공통
                 chip(camera.ratio.label, active: camera.ratio == .fourThree) {
                     camera.toggleRatio()
                 }
-                .disabled(camera.isRecording)
-                .opacity(camera.isRecording ? 0.35 : 1)
-
-                chip(camera.lookPreset.rawValue, active: camera.lookPreset != .off) {
-                    camera.cycleLook()
+                if camera.mode == .photo {
+                    chip(camera.lookPreset.rawValue, active: camera.lookPreset != .off) {
+                        camera.cycleLook()
+                    }
+                } else {
+                    chip(camera.camcorderPreset.rawValue, active: camera.camcorderPreset != .off) {
+                        camera.cycleCamcorder()
+                    }
+                    chip("DATE", active: camera.showsDateStamp) {
+                        camera.toggleDateStamp()
+                    }
                 }
             }
+            .disabled(camera.isRecording)
 
-            modePicker
+            // 녹화 중엔 모드를 바꿀 수 없으니 숨긴다 (자리는 유지)
+            ModePicker(selection: camera.mode) { camera.setMode($0) }
+                .opacity(camera.isRecording ? 0 : 1)
+                .disabled(camera.isRecording)
 
             HStack {
                 thumbnailButton
                 Spacer()
-                if camera.captureMode == .video {
-                    RecordButton(isRecording: camera.isRecording) { shutterAction() }
+                if camera.mode == .photo {
+                    ShutterButton(isBusy: camera.isCapturing) {
+                        if camera.countdown > 0 {
+                            camera.cancelTimer()
+                        } else {
+                            camera.shutterTapped()
+                        }
+                    }
                 } else {
-                    ShutterButton(isBusy: camera.isCapturing) { shutterAction() }
+                    RecordButton(isRecording: camera.isRecording) {
+                        camera.recordTapped()
+                    }
                 }
                 Spacer()
                 Button {
@@ -190,43 +213,12 @@ struct CameraScreen: View {
                         .background(Color.white.opacity(0.14), in: Circle())
                 }
                 .buttonStyle(.plain)
+                .opacity(camera.isRecording ? 0.3 : 1)
                 .disabled(camera.isRecording)
-                .opacity(camera.isRecording ? 0.35 : 1)
             }
             .padding(.horizontal, 34)
         }
-        .padding(.bottom, 22)
-    }
-
-    private func shutterAction() {
-        if camera.countdown > 0 {
-            camera.cancelTimer()
-        } else {
-            camera.shutterTapped()
-        }
-    }
-
-    /// 기본 카메라처럼 셔터 위의 "비디오 / 사진" 글자로 모드를 바꾼다
-    private var modePicker: some View {
-        HStack(spacing: 24) {
-            modeButton("비디오", mode: .video)
-            modeButton("사진", mode: .photo)
-        }
-        .opacity(camera.isRecording ? 0 : 1)
-        .disabled(camera.isRecording)
-    }
-
-    private func modeButton(_ title: String, mode: CaptureMode) -> some View {
-        Button {
-            camera.setCaptureMode(mode)
-        } label: {
-            Text(title)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(camera.captureMode == mode ? Color.yellow : Color.white)
-                .padding(.vertical, 4)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
+        .padding(.bottom, 16)
     }
 
     private var thumbnailButton: some View {

@@ -35,14 +35,6 @@ enum FrameRatio: String, CaseIterable, Identifiable {
         }
     }
 
-    /// 비디오 해상도 — 5s 의 1080p 급. 가로 1080 에 비율만 바꾼다.
-    var videoSize: CGSize {
-        switch self {
-        case .square:    return CGSize(width: 1080, height: 1080)
-        case .fourThree: return CGSize(width: 1080, height: 1440)
-        }
-    }
-
     func next() -> FrameRatio {
         self == .square ? .fourThree : .square
     }
