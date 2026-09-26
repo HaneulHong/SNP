@@ -7,15 +7,15 @@ import UIKit
 enum CamcorderLook {
 
     /// 세로로 들었을 때의 기록 해상도 — SD 480줄.
-    /// 4:3 은 480×640 (가로로 들면 640×480), 5:5 는 480×480.
+    /// 3:2 는 480×720 (가로로 들면 DV 와 같은 720×480), 5:5 는 480×480.
     static func portraitSize(for ratio: FrameRatio) -> CGSize {
         switch ratio {
-        case .square:    return CGSize(width: 480, height: 480)
-        case .fourThree: return CGSize(width: 480, height: 640)
+        case .square:   return CGSize(width: 480, height: 480)
+        case .threeTwo: return CGSize(width: 480, height: 720)
         }
     }
 
-    /// 파라미터가 튜닝된 기준 해상도 (짧은 변 — 5:5 도 4:3 과 같은 480줄에서 잘라 쓰므로 픽셀 크기가 같다)
+    /// 파라미터가 튜닝된 기준 해상도 (짧은 변 — 두 비율 모두 480줄이라 픽셀 크기가 같다)
     private static let referenceShortSide: Double = 480
 
     static func apply(to input: CIImage,

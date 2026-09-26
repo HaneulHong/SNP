@@ -5,6 +5,8 @@ import UIKit
 struct CameraScreen: View {
     @StateObject private var camera = CameraManager()
     @StateObject private var motion = MotionManager()
+    /// 핀치를 시작할 때의 줌 — 핀치 배율을 여기에 곱한다
+    @State private var pinchStartZoom: CGFloat?
 
     var body: some View {
         ZStack {
@@ -107,6 +109,13 @@ struct CameraScreen: View {
                         .id(indicator.id)
                 }
 
+                // 1× ⇄ 2× (minilux zoom 의 35 → 70mm), 핀치로 최대 4×
+                ZoomBadge(zoom: camera.zoom) {
+                    camera.setZoom(camera.zoom < 1.01 ? 2 : 1)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .padding(.bottom, 10)
+
                 if camera.countdown > 0 {
                     Text("\(camera.countdown)")
                         .font(.system(size: 88, weight: .thin, design: .rounded))
@@ -129,6 +138,15 @@ struct CameraScreen: View {
             .onLongPressGesture(minimumDuration: 0.6) {
                 camera.resetFocus()
             }
+            .simultaneousGesture(
+                MagnifyGesture()
+                    .onChanged { value in
+                        let start = pinchStartZoom ?? camera.zoom
+                        if pinchStartZoom == nil { pinchStartZoom = start }
+                        camera.setZoom(start * value.magnification)
+                    }
+                    .onEnded { _ in pinchStartZoom = nil }
+            )
         }
         .aspectRatio(camera.ratio.aspect, contentMode: .fit)
         .clipped()
@@ -162,12 +180,12 @@ struct CameraScreen: View {
     private var bottomBar: some View {
         VStack(spacing: 14) {
             HStack(spacing: 10) {
-                // 비율(5:5 / 4:3)은 사진·비디오 공통
-                chip(camera.ratio.label, active: camera.ratio == .fourThree) {
+                // 비율(5:5 / 3:2)은 사진·비디오 공통
+                chip(camera.ratio.label, active: camera.ratio == .threeTwo) {
                     camera.toggleRatio()
                 }
                 if camera.mode == .photo {
-                    chip(camera.lookPreset.rawValue, active: camera.lookPreset != .off) {
+                    chip(camera.lookPreset.rawValue, active: true) {
                         camera.cycleLook()
                     }
                 } else {

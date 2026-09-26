@@ -11,6 +11,9 @@ enum LegacyLens {
     static let backFocalLength: Double = 29
     static let frontFocalLength: Double = 31
 
+    /// 디지털 줌 상한 — 렌즈를 바꾸지 않고 가운데를 잘라 키운다 (5s·6s 도 디지털 줌만 있었다)
+    static let maxUserZoom: CGFloat = 4
+
     /// 풀프레임(36×24mm) 대각선의 절반
     private static let fullFrameHalfDiagonal: Double = 21.633
 
@@ -29,9 +32,11 @@ enum LegacyLens {
     }
 
     /// 활성 포맷 기준으로 목표 화각을 맞춘다. 세션 프리셋·렌즈가 바뀔 때마다 다시 호출해야 한다.
+    /// - Parameter userZoom: 그 화각 위에 거는 디지털 줌 (1 ... maxUserZoom)
     /// - Note: `lockForConfiguration` 은 호출하는 쪽에서 잡는다.
     static func applyFieldOfView(to device: AVCaptureDevice,
-                                 backFocal: Double = LegacyLens.backFocalLength) {
+                                 backFocal: Double = LegacyLens.backFocalLength,
+                                 userZoom: CGFloat = 1) {
         let focal = device.position == .front ? frontFocalLength : backFocal
         let format = device.activeFormat
         let fov = Double(format.videoFieldOfView) * .pi / 180
@@ -47,7 +52,7 @@ enum LegacyLens {
 
         // 4:3 프레임의 가로는 대각선의 0.8
         let targetHalfTan = 0.8 * fullFrameHalfDiagonal / focal
-        let zoom = halfTan / targetHalfTan
+        let zoom = halfTan / targetHalfTan * Double(min(max(userZoom, 1), maxUserZoom))
 
         let upper = Double(format.videoMaxZoomFactor)
         device.videoZoomFactor = CGFloat(min(max(zoom, 1), upper))
