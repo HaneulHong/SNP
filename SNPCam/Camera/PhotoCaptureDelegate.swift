@@ -10,6 +10,7 @@ final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     private let ratio: FrameRatio
     private let params: LookParameters
     private let mirrored: Bool
+    private let dateStamp: Bool
     private let context: CIContext
     private let completion: (UIImage?) -> Void
     private let workQueue = DispatchQueue(label: "snpcam.process", qos: .userInitiated)
@@ -17,11 +18,13 @@ final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     init(ratio: FrameRatio,
          params: LookParameters,
          mirrored: Bool,
+         dateStamp: Bool,
          context: CIContext,
          completion: @escaping (UIImage?) -> Void) {
         self.ratio = ratio
         self.params = params
         self.mirrored = mirrored
+        self.dateStamp = dateStamp
         self.context = context
         self.completion = completion
     }
@@ -47,6 +50,7 @@ final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
                                                       ratio: ratio,
                                                       params: look,
                                                       mirrored: mirrored,
+                                                      dateStamp: dateStamp,
                                                       context: context) else {
                 completion(nil)
                 return

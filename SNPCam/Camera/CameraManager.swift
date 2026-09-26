@@ -13,7 +13,7 @@ final class CameraManager: NSObject, ObservableObject {
 
     @Published private(set) var mode: CaptureMode = .photo
 
-    @Published var ratio: FrameRatio = .square
+    @Published var ratio: FrameRatio = .threeTwo
     @Published var lookPreset: LookPreset = .film
     @Published var flashMode: AVCaptureDevice.FlashMode = .off
     @Published var timerSeconds: Int = 0
@@ -69,7 +69,7 @@ final class CameraManager: NSObject, ObservableObject {
     /// 현재 룩 파라미터 (백그라운드 큐에서도 읽으므로 별도 저장)
     private var currentParams = LookParameters.film
     private var currentZoom: CGFloat = 1
-    private var currentRatio: FrameRatio = .square
+    private var currentRatio: FrameRatio = .threeTwo
     private var currentMode: CaptureMode = .photo
     private var currentCamcorder = CamcorderParameters.dv
     private var currentShowsDate = true
@@ -79,6 +79,9 @@ final class CameraManager: NSObject, ObservableObject {
     /// 비디오 큐 전용
     private var recorder: VideoRecorder?
     private let dateStamp = DateStamp()
+    /// 사진 프리뷰용 필름 날짜 스탬프 · 사람 마스크 (비디오 큐 전용)
+    private let filmStamp = FilmDateStamp()
+    private let liveDepth = LiveDepthMask()
 
     override init() {
         super.init()
@@ -523,6 +526,7 @@ final class CameraManager: NSObject, ObservableObject {
         let ratio = currentRatio
         let mirrored = isFrontCamera
         let flash = flashMode
+        let showsDate = currentShowsDate
 
         sessionQueue.async { [weak self] in
             guard let self else { return }
@@ -541,6 +545,7 @@ final class CameraManager: NSObject, ObservableObject {
                 ratio: ratio,
                 params: params,
                 mirrored: mirrored,
+                dateStamp: showsDate,
                 context: self.renderer.ciContext
             ) { [weak self] thumbnail in
                 guard let self else { return }
@@ -663,15 +668,32 @@ extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate,
         frameSeed += 1
 
         if currentMode == .video {
+            liveDepth.reset()
             renderCamcorderFrame(image, at: CMSampleBufferGetPresentationTimeStamp(sampleBuffer))
             return
         }
 
-        let cropped = PhotoProcessor.centerCrop(image, aspect: currentRatio.aspect)
+        var cropped = PhotoProcessor.centerCrop(image, aspect: currentRatio.aspect)
+
+        // FILM: 사람 뒤 배경 흐림을 프리뷰에도 — 가벼운 마스크를 몇 프레임마다 새로 뽑는다
+        if DepthEffect.wants(currentParams) {
+            liveDepth.update(with: pixelBuffer)
+            if let person = liveDepth.mask(scaledTo: image.extent) {
+                let mask = PhotoProcessor.centerCrop(person.mask, aspect: currentRatio.aspect)
+                cropped = DepthEffect.apply(to: cropped,
+                                            params: currentParams,
+                                            person: .init(mask: mask, coverage: person.coverage))
+            }
+        } else {
+            liveDepth.reset()
+        }
+
+        let stamp = currentShowsDate ? filmStamp.image(for: Date(), in: cropped.extent) : nil
         let looked = RetroLook.apply(to: cropped,
                                      params: currentParams,
                                      quality: .preview,
-                                     seed: frameSeed)
+                                     seed: frameSeed,
+                                     stamp: stamp)
         renderer.enqueue(looked)
     }
 

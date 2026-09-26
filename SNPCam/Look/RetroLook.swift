@@ -14,10 +14,12 @@ enum RetroLook {
     /// 파라미터가 튜닝된 기준 해상도. 실제 이미지 크기에 맞춰 반경 값을 스케일한다.
     private static let referenceWidth: Double = 3264
 
+    /// - Parameter stamp: 필름 날짜 스탬프 (FilmDateStamp). 필름에 같이 구워지므로 소프트·그레인 전에 더한다
     static func apply(to input: CIImage,
                       params: LookParameters,
                       quality: LookQuality,
-                      seed: Double) -> CIImage {
+                      seed: Double,
+                      stamp: CIImage? = nil) -> CIImage {
 
         let extent = input.extent
         guard extent.width > 0, extent.height > 0 else { return input }
@@ -79,6 +81,16 @@ enum RetroLook {
                 kCIInputTargetImageKey: lightened,
                 kCIInputTimeKey: min(params.hazeAmount, 1)
             ])
+        }
+
+        // ── 4-2. 필름 날짜 스탬프: 뒤판 LED 빛이 더해진다 → 뒤의 소프트·그레인·비네팅을 같이 먹는다
+        if let stamp {
+            image = stamp
+                .applyingFilter("CIAdditionCompositing", parameters: [
+                    kCIInputBackgroundImageKey: image
+                ])
+                .applyingFilter("CIColorClamp")
+                .cropped(to: extent)
         }
 
         // ── 5. 소프트 디테일 → ISP 샤프닝 헤일로

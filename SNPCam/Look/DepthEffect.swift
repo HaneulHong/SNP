@@ -10,8 +10,15 @@ import Vision
 ///
 /// - 사람이 없거나 너무 작게 찍히면 아무것도 하지 않는다 (풍경·정물은 그대로 선명하게)
 /// - 사람이 화면을 크게 차지할수록(가까울수록) 배경을 더 흐린다 — 실제 렌즈와 같은 거동
-/// - 찍는 순간에만 계산하므로 저장본에만 걸리고 프리뷰에는 없다
+/// - 저장본은 찍는 순간 정확한 마스크를 새로 뽑고, 프리뷰는 LiveDepthMask 의 가벼운 마스크를 쓴다
 enum DepthEffect {
+
+    /// 사람 = 흰색, 배경 = 검정. 적용할 이미지와 같은 좌표·크기.
+    struct PersonMask {
+        let mask: CIImage
+        /// 사람이 화면에서 차지하는 비율 (0...1)
+        let coverage: Double
+    }
 
     /// 파라미터가 튜닝된 기준 해상도 (RetroLook 과 같은 기준)
     private static let referenceWidth: Double = 3264
@@ -19,12 +26,21 @@ enum DepthEffect {
     /// 이보다 작게 찍힌 사람은 무시한다 (화면 대비 비율)
     private static let minimumCoverage = 0.02
 
-    static func apply(to image: CIImage, params: LookParameters) -> CIImage {
-        guard params.depthBlur > 0 || params.depthHaze > 0 else { return image }
+    static func wants(_ params: LookParameters) -> Bool {
+        params.depthBlur > 0 || params.depthHaze > 0
+    }
 
+    /// 저장본용 — 정확도 높은 마스크를 새로 뽑아 적용한다
+    static func apply(to image: CIImage, params: LookParameters) -> CIImage {
+        guard wants(params), let person = personMask(for: image) else { return image }
+        return apply(to: image, params: params, person: person)
+    }
+
+    /// 이미 뽑아 둔 마스크로 적용한다 (프리뷰)
+    static func apply(to image: CIImage, params: LookParameters, person: PersonMask) -> CIImage {
         let extent = image.extent
-        guard extent.width > 0, extent.height > 0,
-              let person = personMask(for: image),
+        guard wants(params),
+              extent.width > 0, extent.height > 0,
               person.coverage > minimumCoverage else { return image }
 
         let scale = max(0.15, Double(extent.width) / referenceWidth)
@@ -69,7 +85,7 @@ enum DepthEffect {
     // MARK: - 사람 마스크
 
     /// 사람 = 흰색, 배경 = 검정. 이미지와 같은 크기로 맞춰서 돌려준다.
-    private static func personMask(for image: CIImage) -> (mask: CIImage, coverage: Double)? {
+    private static func personMask(for image: CIImage) -> PersonMask? {
         let request = VNGeneratePersonSegmentationRequest()
         request.qualityLevel = .accurate
         request.outputPixelFormat = kCVPixelFormatType_OneComponent8
@@ -84,19 +100,21 @@ enum DepthEffect {
 
         let coverage = averageValue(of: buffer)
 
-        // 마스크는 사진보다 작게 나오므로 사진 크기로 키운다
-        var mask = CIImage(cvPixelBuffer: buffer)
-        let sx = image.extent.width / mask.extent.width
-        let sy = image.extent.height / mask.extent.height
-        mask = mask
+        return PersonMask(mask: scaled(CIImage(cvPixelBuffer: buffer), to: image.extent),
+                          coverage: coverage)
+    }
+
+    /// 마스크는 사진보다 작게 나오므로 사진 크기·위치로 맞춘다
+    static func scaled(_ mask: CIImage, to extent: CGRect) -> CIImage {
+        let sx = extent.width / mask.extent.width
+        let sy = extent.height / mask.extent.height
+        return mask
             .transformed(by: CGAffineTransform(scaleX: sx, y: sy))
-            .transformed(by: CGAffineTransform(translationX: image.extent.minX,
-                                               y: image.extent.minY))
-        return (mask, coverage)
+            .transformed(by: CGAffineTransform(translationX: extent.minX, y: extent.minY))
     }
 
     /// 한 채널 8비트 마스크의 평균 (0...1) — 사람이 화면에서 차지하는 비율
-    private static func averageValue(of buffer: CVPixelBuffer) -> Double {
+    static func averageValue(of buffer: CVPixelBuffer) -> Double {
         CVPixelBufferLockBaseAddress(buffer, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
         guard let base = CVPixelBufferGetBaseAddress(buffer) else { return 0 }
@@ -116,5 +134,52 @@ enum DepthEffect {
             }
         }
         return count > 0 ? Double(sum) / Double(count * 255) : 0
+    }
+}
+
+/// 프리뷰용 사람 마스크 — 실시간용 가벼운 품질로, 몇 프레임에 한 번만 새로 뽑고 그 사이엔 재사용한다.
+/// 저장본은 이것 대신 DepthEffect 가 정확한 마스크를 새로 뽑으므로 머리카락 경계가 더 깔끔하다.
+/// - Note: 카메라 비디오 큐에서만 쓴다.
+final class LiveDepthMask {
+
+    /// 마스크를 새로 뽑는 간격 (프레임)
+    private static let interval = 3
+
+    private let request: VNGeneratePersonSegmentationRequest = {
+        let request = VNGeneratePersonSegmentationRequest()
+        request.qualityLevel = .balanced
+        request.outputPixelFormat = kCVPixelFormatType_OneComponent8
+        return request
+    }()
+    /// 영상용 핸들러 — 앞 프레임 결과를 이어 써서 마스크가 덜 떨린다
+    private let sequence = VNSequenceRequestHandler()
+
+    private var frameCount = 0
+    private var latest: (mask: CIImage, coverage: Double)?
+
+    /// 카메라 버퍼 한 장을 넣으면 몇 프레임마다 마스크를 새로 뽑는다
+    func update(with pixelBuffer: CVPixelBuffer) {
+        frameCount += 1
+        guard latest == nil || frameCount % Self.interval == 0 else { return }
+        do {
+            try sequence.perform([request], on: pixelBuffer)
+        } catch {
+            return
+        }
+        guard let buffer = request.results?.first?.pixelBuffer else { return }
+        latest = (CIImage(cvPixelBuffer: buffer), DepthEffect.averageValue(of: buffer))
+    }
+
+    /// 마지막 마스크를 카메라 버퍼 크기(extent)로 맞춰서
+    func mask(scaledTo extent: CGRect) -> DepthEffect.PersonMask? {
+        guard let latest else { return nil }
+        return DepthEffect.PersonMask(mask: DepthEffect.scaled(latest.mask, to: extent),
+                                      coverage: latest.coverage)
+    }
+
+    /// FILM 이 아니거나 비디오 모드일 때 — 다시 켰을 때 묵은 마스크가 한순간 보이지 않게
+    func reset() {
+        latest = nil
+        frameCount = 0
     }
 }

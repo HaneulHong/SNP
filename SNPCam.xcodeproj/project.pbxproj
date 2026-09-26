@@ -49,11 +49,14 @@
 		CA5000000000000000000038 = {isa = PBXBuildFile; fileRef = CA5000000000000000000037 /* FilmColor.swift */; };
 		CA5000000000000000000039 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepthEffect.swift; sourceTree = "<group>"; };
 		CA500000000000000000003A = {isa = PBXBuildFile; fileRef = CA5000000000000000000039 /* DepthEffect.swift */; };
+		CA500000000000000000003B = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDateStamp.swift; sourceTree = "<group>"; };
+		CA500000000000000000003C = {isa = PBXBuildFile; fileRef = CA500000000000000000003B /* FilmDateStamp.swift */; };
 		CA5000000000000000000013 = {isa = PBXGroup; children = (
 			CA5000000000000000000035 /* CamcorderLook.swift */,
 			CA5000000000000000000033 /* CamcorderParameters.swift */,
 			CA5000000000000000000039 /* DepthEffect.swift */,
 			CA5000000000000000000037 /* FilmColor.swift */,
+			CA500000000000000000003B /* FilmDateStamp.swift */,
 			CA500000000000000000000F /* LookParameters.swift */,
 			CA5000000000000000000011 /* RetroLook.swift */,
 		); path = Look; sourceTree = "<group>"; };
@@ -107,6 +110,7 @@
 			CA5000000000000000000036 /* CamcorderLook.swift in Sources */,
 			CA5000000000000000000038 /* FilmColor.swift in Sources */,
 			CA500000000000000000003A /* DepthEffect.swift in Sources */,
+			CA500000000000000000003C /* FilmDateStamp.swift in Sources */,
 		); runOnlyForDeploymentPostprocessing = 0; };
 		CA5000000000000000000023 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (
 		); runOnlyForDeploymentPostprocessing = 0; };

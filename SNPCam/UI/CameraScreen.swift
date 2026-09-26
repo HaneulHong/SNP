@@ -180,8 +180,8 @@ struct CameraScreen: View {
     private var bottomBar: some View {
         VStack(spacing: 14) {
             HStack(spacing: 10) {
-                // 비율(5:5 / 3:2)은 사진·비디오 공통
-                chip(camera.ratio.label, active: camera.ratio == .threeTwo) {
+                // 비율(3:2 / 5:5)·날짜는 사진·비디오 공통. 기본(3:2)이 아닐 때만 노랗게
+                chip(camera.ratio.label, active: camera.ratio == .square) {
                     camera.toggleRatio()
                 }
                 if camera.mode == .photo {
@@ -192,9 +192,10 @@ struct CameraScreen: View {
                     chip(camera.camcorderPreset.rawValue, active: camera.camcorderPreset != .off) {
                         camera.cycleCamcorder()
                     }
-                    chip("DATE", active: camera.showsDateStamp) {
-                        camera.toggleDateStamp()
-                    }
+                }
+                // 사진은 필름 날짜('26 9 26), 비디오는 캠코더 날짜·시각
+                chip("DATE", active: camera.showsDateStamp) {
+                    camera.toggleDateStamp()
                 }
             }
             .disabled(camera.isRecording)

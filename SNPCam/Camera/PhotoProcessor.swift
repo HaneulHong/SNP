@@ -13,6 +13,7 @@ enum PhotoProcessor {
                         ratio: FrameRatio,
                         params: LookParameters,
                         mirrored: Bool,
+                        dateStamp: Bool,
                         context: CIContext) -> Output? {
 
         guard var image = CIImage(data: photoData,
@@ -38,11 +39,13 @@ enum PhotoProcessor {
         // 3. 심도·거리감 — 렌즈에서 생기는 흐림이므로 색·그레인보다 먼저 (FILM 프리셋)
         image = DepthEffect.apply(to: image, params: params)
 
-        // 4. 룩 적용
+        // 4. 룩 적용 (+ 필름 날짜 스탬프 — 좌우 반전 뒤에 얹으므로 셀카에서도 바로 읽힌다)
+        let stamp = dateStamp ? FilmDateStamp().image(for: Date(), in: image.extent) : nil
         let looked = RetroLook.apply(to: image,
                                      params: params,
                                      quality: .full,
-                                     seed: Date().timeIntervalSinceReferenceDate)
+                                     seed: Date().timeIntervalSinceReferenceDate,
+                                     stamp: stamp)
 
         let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
         guard let jpeg = context.jpegRepresentation(
